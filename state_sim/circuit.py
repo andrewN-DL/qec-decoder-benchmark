@@ -12,7 +12,9 @@ class Circuit:
         self.gates = []
         
 
-    def H(self, bit):
+    def H(self, bit: int, add_to_circuit: bool=True):
+
+        assert bit >= 0
 
         had = np.array([
             [1*self.R2, 1*self.R2],
@@ -40,9 +42,12 @@ class Circuit:
             m = had if i == 1 else id
             prod = np.kron(prod, m)
 
-        self.gates.append(prod)
+        if add_to_circuit:
+            self.gates.append(prod)
+        
+        return prod
 
-    def Z(self, bits: list):
+    def Z(self, bits: list, add_to_circuit: bool=True):
 
         z = np.diag([1, -1])
         id = np.diag([1, 1])
@@ -64,9 +69,12 @@ class Circuit:
             m = z if i == 1 else id
             prod = np.kron(prod, m)
 
-        self.gates.append(prod)
+        if add_to_circuit:
+            self.gates.append(prod)
 
-    def X(self, bits: list):
+        return prod
+
+    def X(self, bits: list, add_to_circuit: bool=True):
 
         x = np.array([
             [0, 1],
@@ -91,9 +99,12 @@ class Circuit:
             m = x if i == 1 else id
             prod = np.kron(prod, m)
 
-        self.gates.append(prod)
+        if add_to_circuit:
+            self.gates.append(prod)
 
-    def CNOT(self, control, target):
+        return prod
+
+    def CNOT(self, control, target, add_to_circuit: bool=True):
         x = np.array(
                 [[0, 1],
                 [1, 0]]
@@ -115,7 +126,10 @@ class Circuit:
 
             m[state, int(num)] = 1
 
-        self.gates.append(m)
+        if add_to_circuit:
+            self.gates.append(m)
+
+        return m
 
     def bin_state(self, i, dim=None, display=True):
         dim = dim or self.dim
@@ -149,17 +163,45 @@ class Circuit:
 
         return int(result), state
 
-    def run(self, shots = 10):
+
+    def _measure_all(self, state):
+    
+            # Sampling basis state in Z-basis
+            sample = np.random.choice(len(state), p=(state**2).reshape(1, -1)[0])
+    
+            # Measuring relevant bit
+            result = self.bin_state(sample, self.dim, display=True)
+    
+            return result
+
+    # def compile(self, shots: int=10):
+    #     print('Running')
+    #     for gate in gates:
+    #         if isinstance(gate, int):
+    #             res, ss = self._measure_quick(ss, gate)
+    #             print(f'Measured {gate}. Result:', res)
+    #         else:
+    #             ss = gate @ ss
+        
+
+    def run(self, noise: bool=False, shots: int=10):
 
         for _ in range(shots):
             print('Running')
             gates = copy.deepcopy(self.gates)
+            if noise:
+                if np.random.random() < 0.2:
+                    bit = np.random.randint(3)
+                    gates.insert(3, self.X(bit))
+                    print('Hit', bit)
             ss = copy.deepcopy(self.state)
             for gate in gates:
                 if isinstance(gate, int):
                     res, ss = self._measure_quick(ss, gate)
-                    print(res)
+                    print(f'Measured {gate}. Result:', res)
                 else:
                     ss = gate @ ss
+
+            print('Final Measurement:', self._measure_all(ss))
 
         return self.state
