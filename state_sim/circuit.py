@@ -74,6 +74,33 @@ class Circuit:
 
         return prod
 
+    def S(self, bits: list, add_to_circuit: bool=True):
+    
+            z = np.diag([1, 0 + 1j])
+            id = np.diag([1, 1])
+    
+            if self.dim == 1:
+                return z
+    
+            chain = np.zeros(self.dim)
+            chain[bits] = 1
+    
+            m0 = z if chain[0] == 1 else id
+            m1 = z if chain[1] == 1 else id
+            prod = np.kron(m0, m1)
+    
+            if self.dim == 2:
+                return prod
+            
+            for i in chain[2:]:
+                m = z if i == 1 else id
+                prod = np.kron(prod, m)
+    
+            if add_to_circuit:
+                self.gates.append(prod)
+    
+            return prod
+
     def X(self, bits: list, add_to_circuit: bool=True):
 
         x = np.array([

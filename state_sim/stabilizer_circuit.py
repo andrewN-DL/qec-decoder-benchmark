@@ -75,7 +75,8 @@ class RepititionCode(Circuit):
 
             final_state = self.decode(''.join([str(i) for i in syndrome]), ns2)
 
-            print(self._measure_all(final_state))
+            final_state = self._measure_all(final_state)
+            print(final_state[:4] + final_state[6:])
 
     def run_circuit(self, gates, initial_state):
         
