@@ -184,9 +184,10 @@ class Circuit:
 
         # Projecting onto post measurement space
         state = np.array([s if (self.bin_state(idx, self.dim, display=False)[index] == result) else np.array([0.0]) for idx, s in enumerate(state)]).reshape(-1, 1)
-
+        # print(state, np.sqrt(np.sum(state**2)))
         # Renormalising
-        state = state / np.sum(state**2)
+        state = state / np.sqrt(np.sum(state**2))
+        # print(state, np.sqrt(np.sum(state**2)))¬
 
         return int(result), state
 
@@ -201,15 +202,6 @@ class Circuit:
     
             return result
 
-    # def compile(self, shots: int=10):
-    #     print('Running')
-    #     for gate in gates:
-    #         if isinstance(gate, int):
-    #             res, ss = self._measure_quick(ss, gate)
-    #             print(f'Measured {gate}. Result:', res)
-    #         else:
-    #             ss = gate @ ss
-        
 
     def run(self, noise: bool=False, shots: int=10):
 
