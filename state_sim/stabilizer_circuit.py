@@ -97,64 +97,97 @@ class RepititionCode(Circuit):
             error_weight: int=1,
             measurement_noise_prob: float=0.2,
             shots: int=10,
+            rounds: int = 25,
             random_initial_state: bool=False
         ):
 
         result = []
 
-        state = copy.deepcopy(self.initial_state)
+        # TODO: Make sure this is copying correctly
+        state = self.initial_state.copy()
 
         for _ in range(shots):
-
             if random_initial_state:
                 state = self.H(0, extra=False) @ state
                 intial_result, state = self._measure_quick(state, 0)
-    
-            # print(state)
-            error = []
-            unaffected_bits = list(range(self.distance))
 
-            # For single error per run per bit
-            for _ in range(error_weight):
-                if np.random.random() < error_prob:
-                    idx = np.random.randint(len(unaffected_bits))
-                    bit = unaffected_bits.pop(idx)
-                    error.append(self.X(bit, extra=False))
+            syndrome_measurements = []
+            syndrome, state = self.run_round(
+                state=state,
+                error_prob=error_prob,
+                error_weight=error_weight,
+                measurement_noise_prob=measurement_noise_prob,
+                first_round=True,
+            )
 
-            if not error:
-                error = [np.diag(np.ones(2**(self.distance + 2)))]
+            syndrome_measurements.append(syndrome)
 
-            # Stabilizer noise
-            stab_error = []
-            for i in range(2):
-                if np.random.random() < measurement_noise_prob:
-                    stab_error.append(self.X(2 + i, extra=False))
+            for _ in range(rounds):
+                syndrome, state = self.run_round(
+                    state=state,
+                    error_prob=error_prob,
+                    error_weight=error_weight,
+                    measurement_noise_prob=measurement_noise_prob,
+                )
 
-            if not stab_error:
-                stab_error = [np.diag(np.ones(2**(self.distance + 2)))]
+                syndrome_measurements.append(syndrome)
 
+            print('Full syndrome: ', syndrome_measurements)
 
-            gates = np.concatenate([self.code_state, error, self.s1, self.s2, stab_error])
-            new_state = self.run_circuit(gates, state)
-
-            m1, ns1 = self.measure_stabilizer(new_state, 3)
-            m2, ns2 = self.measure_stabilizer(new_state, 4)
-
-            syndrome = [m1, m2]
-
-            # print(f'Syndrome: {syndrome}')
-
-            final_state = self.decode(''.join([str(i) for i in syndrome]), ns2)
+            final_state = self.decode(''.join([str(i) for i in syndrome]), state)
 
             final_state = self._measure_all(final_state)
 
             result.append((intial_result) == int(final_state[1]))
 
-            # print(f'Initial logical state: {intial_result}, Final result:  {final_state[:4] + final_state[6:]}. Decoding successful: {(intial_result) == int(final_state[1])}')
-
         logical_error_rate = 1 - (np.sum(result))/len(result)
 
         return logical_error_rate
+
+    def run_round(
+            self,
+            state,
+            error_prob: float,
+            error_weight: int,
+            measurement_noise_prob: float,
+            first_round: bool=False,
+        ):
+
+        error = []
+        unaffected_bits = list(range(self.distance))
+
+        # For single error per run per bit
+        for _ in range(error_weight):
+            if np.random.random() < error_prob:
+                idx = np.random.randint(len(unaffected_bits))
+                bit = unaffected_bits.pop(idx)
+                error.append(self.X(bit, extra=False))
+
+        if not error:
+            error = [np.diag(np.ones(2**(self.distance + 2)))]
+
+        # Stabilizer noise
+        stab_error = []
+        for i in range(2):
+            if np.random.random() < measurement_noise_prob:
+                stab_error.append(self.X(2 + i, extra=False))
+
+        if not stab_error:
+            stab_error = [np.diag(np.ones(2**(self.distance + 2)))]
+
+        if first_round:
+            gates = np.concatenate([self.code_state, error, self.s1, self.s2, stab_error])
+        else:
+            gates = np.concatenate([error, self.s1, self.s2, stab_error])
+
+        new_state = self.run_circuit(gates, state)
+
+        m1, ns1 = self.measure_stabilizer(new_state, 3)
+        m2, ns2 = self.measure_stabilizer(new_state, 4)
+
+        syndrome = [m1, m2]
+
+        return syndrome, ns2
 
     def run_circuit(self, gates, initial_state):
         
@@ -174,5 +207,11 @@ class RepititionCode(Circuit):
         return self.X(correct_bit, extra=False) @ state
 
 
-# code = RepititionCode(3)
-# code.run(error_prob=0.1, error_weight=3, shots=2000, random_initial_state=True)
+code = RepititionCode(3)
+code.run(
+    error_prob=0.0,
+    error_weight=3,
+    measurement_noise_prob=0.1,
+    shots=1,
+    random_initial_state=True
+)
