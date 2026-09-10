@@ -91,7 +91,15 @@ class RepititionCode(Circuit):
 
         return
 
-    def run(self, error_prob: float=0.2, error_weight: int=1, shots: int=10, random_initial_state: bool=False):
+    def run(
+            self,
+            error_prob:float=0.2,
+            error_weight: int=1,
+            measurement_noise_prob: float=0.2,
+            shots: int=10,
+            random_initial_state: bool=False
+        ):
+
         result = []
 
         state = copy.deepcopy(self.initial_state)
@@ -106,19 +114,27 @@ class RepititionCode(Circuit):
             error = []
             unaffected_bits = list(range(self.distance))
 
-            # For single error per run
+            # For single error per run per bit
             for _ in range(error_weight):
                 if np.random.random() < error_prob:
-                    # print(unaffected_bits)
                     idx = np.random.randint(len(unaffected_bits))
                     bit = unaffected_bits.pop(idx)
                     error.append(self.X(bit, extra=False))
-                    # print(f'Error on bit {bit}')
 
             if not error:
                 error = [np.diag(np.ones(2**(self.distance + 2)))]
 
-            gates = np.concatenate([self.code_state, error, self.s1, self.s2])
+            # Stabilizer noise
+            stab_error = []
+            for i in range(2):
+                if np.random.random() < measurement_noise_prob:
+                    stab_error.append(self.X(2 + i, extra=False))
+
+            if not stab_error:
+                stab_error = [np.diag(np.ones(2**(self.distance + 2)))]
+
+
+            gates = np.concatenate([self.code_state, error, self.s1, self.s2, stab_error])
             new_state = self.run_circuit(gates, state)
 
             m1, ns1 = self.measure_stabilizer(new_state, 3)
@@ -137,7 +153,6 @@ class RepititionCode(Circuit):
             # print(f'Initial logical state: {intial_result}, Final result:  {final_state[:4] + final_state[6:]}. Decoding successful: {(intial_result) == int(final_state[1])}')
 
         logical_error_rate = 1 - (np.sum(result))/len(result)
-        # print(f'Total logical error: {1 - (np.sum(result))/len(result)}')
 
         return logical_error_rate
 
@@ -159,5 +174,5 @@ class RepititionCode(Circuit):
         return self.X(correct_bit, extra=False) @ state
 
 
-code = RepititionCode(3)
-code.run(error_prob=0.1, error_weight=3, shots=2000, random_initial_state=True)
+# code = RepititionCode(3)
+# code.run(error_prob=0.1, error_weight=3, shots=2000, random_initial_state=True)

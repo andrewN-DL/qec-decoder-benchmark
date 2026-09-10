@@ -177,17 +177,17 @@ class Circuit:
     def _measure_quick(self, state, index):
 
         # Sampling basis state in Z-basis
-        sample = np.random.choice(len(state), p=(state**2).reshape(1, -1)[0])
+        # print(np.abs(state.flatten())**2, state**2)
+        sample = np.random.choice(len(state), p=(np.abs(state.flatten())**2).reshape(1, -1)[0])
 
         # Measuring relevant bit
         result = self.bin_state(sample, self.dim, display=False)[index]
 
         # Projecting onto post measurement space
         state = np.array([s if (self.bin_state(idx, self.dim, display=False)[index] == result) else np.array([0.0]) for idx, s in enumerate(state)]).reshape(-1, 1)
-        # print(state, np.sqrt(np.sum(state**2)))
+
         # Renormalising
-        state = state / np.sqrt(np.sum(state**2))
-        # print(state, np.sqrt(np.sum(state**2)))¬
+        state = state / np.linalg.norm(state)
 
         return int(result), state
 
@@ -195,7 +195,7 @@ class Circuit:
     def _measure_all(self, state):
     
             # Sampling basis state in Z-basis
-            sample = np.random.choice(len(state), p=(state**2).reshape(1, -1)[0])
+            sample = np.random.choice(len(state), p=(np.abs(state.flatten())**2).reshape(1, -1)[0])
     
             # Measuring relevant bit
             result = self.bin_state(sample, self.dim, display=True)
