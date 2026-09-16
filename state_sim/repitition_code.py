@@ -4,8 +4,9 @@ import copy
 
 # currently only works for 3-qubit code
 class RepititionCode(Circuit):
-    def __init__(self, distance: int):
-        super().__init__(distance + 2)
+    def __init__(self, distance: int, seed: int=None):
+
+        super().__init__(distance + 2, seed)
         self.distance = distance
 
         self.initial_state = copy.deepcopy(self.state)
@@ -86,8 +87,8 @@ class RepititionCode(Circuit):
 
     # Not used
     def add_X_noise(self, prob):
-        if np.random.random() < prob:
-            bit = np.random.randint(self.distance)
+        if self.rng.random() < prob:
+            bit = self.rng.integers(self.distance)
             self.X(bit)
 
         return
@@ -147,15 +148,9 @@ class RepititionCode(Circuit):
 
             self.display_syndrome(syndrome_measurements)
 
-            final_state = self.decode(''.join([str(i) for i in syndrome]), state)
+            # final_state = self.decode(''.join([str(i) for i in syndrome]), state)
 
-            final_state = self._measure_all(final_state)
-
-            result.append((intial_result) == int(final_state[1]))
-
-        logical_error_rate = 1 - (np.sum(result))/len(result)
-
-        return logical_error_rate
+        return syndrome_measurements
 
     def run_round(
             self,
@@ -172,8 +167,8 @@ class RepititionCode(Circuit):
         # For single error per run per bit
         true_phys_error = [0, 0, 0]
         for i in range(error_weight):
-            if np.random.random() < error_prob:
-                idx = np.random.randint(len(unaffected_bits))
+            if self.rng.random() < error_prob:
+                idx = self.rng.integers(len(unaffected_bits))
                 bit = unaffected_bits.pop(idx)
                 true_phys_error[bit] = 1
                 error.append(self.X(bit, extra=False))
@@ -185,7 +180,7 @@ class RepititionCode(Circuit):
         stab_error = []
         true_meas_error = [0, 0]
         for i in range(2):
-            if np.random.random() < measurement_noise_prob:
+            if self.rng.random() < measurement_noise_prob:
                 true_meas_error[i] = 1
                 stab_error.append(self.X(3 + i, extra=False))
 
