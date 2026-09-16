@@ -84,6 +84,7 @@ class RepititionCode(Circuit):
     def measure_stabilizer(self, state, bit):
         return self._measure_quick(state, bit)
 
+    # Not used
     def add_X_noise(self, prob):
         if np.random.random() < prob:
             bit = np.random.randint(self.distance)
@@ -112,7 +113,9 @@ class RepititionCode(Circuit):
                 intial_result, state = self._measure_quick(state, 0)
 
             syndrome_measurements = []
-            syndrome, state = self.run_round(
+            true_physical_error = []
+            true_measurement_error = []
+            syndrome, state, phys_error, meas_error = self.run_round(
                 state=state,
                 error_prob=error_prob,
                 error_weight=error_weight,
@@ -121,9 +124,11 @@ class RepititionCode(Circuit):
             )
 
             syndrome_measurements.append(syndrome)
+            true_physical_error.append(phys_error)
+            true_measurement_error.append(meas_error)
 
             for _ in range(rounds):
-                syndrome, state = self.run_round(
+                syndrome, state, phys_error, meas_error = self.run_round(
                     state=state,
                     error_prob=error_prob,
                     error_weight=error_weight,
@@ -131,8 +136,16 @@ class RepititionCode(Circuit):
                 )
 
                 syndrome_measurements.append(syndrome)
+                true_physical_error.append(phys_error)
+                true_measurement_error.append(meas_error)
 
-            print('Full syndrome: ', syndrome_measurements)
+            print('Syndrome:', syndrome_measurements)
+            print('\n')
+            print('Physical Errors:', true_physical_error)
+            print('\n')
+            print('Measurement Errors:', true_measurement_error)
+
+            self.display_syndrome(syndrome_measurements)
 
             final_state = self.decode(''.join([str(i) for i in syndrome]), state)
 
@@ -157,10 +170,12 @@ class RepititionCode(Circuit):
         unaffected_bits = list(range(self.distance))
 
         # For single error per run per bit
-        for _ in range(error_weight):
+        true_phys_error = [0, 0, 0]
+        for i in range(error_weight):
             if np.random.random() < error_prob:
                 idx = np.random.randint(len(unaffected_bits))
                 bit = unaffected_bits.pop(idx)
+                true_phys_error[bit] = 1
                 error.append(self.X(bit, extra=False))
 
         if not error:
@@ -168,9 +183,11 @@ class RepititionCode(Circuit):
 
         # Stabilizer noise
         stab_error = []
+        true_meas_error = [0, 0]
         for i in range(2):
             if np.random.random() < measurement_noise_prob:
-                stab_error.append(self.X(2 + i, extra=False))
+                true_meas_error[i] = 1
+                stab_error.append(self.X(3 + i, extra=False))
 
         if not stab_error:
             stab_error = [np.diag(np.ones(2**(self.distance + 2)))]
@@ -185,9 +202,11 @@ class RepititionCode(Circuit):
         m1, ns1 = self.measure_stabilizer(new_state, 3)
         m2, ns2 = self.measure_stabilizer(new_state, 4)
 
+        ns2 = self.reset_stabilizers(ns2)
+        
         syndrome = [m1, m2]
 
-        return syndrome, ns2
+        return syndrome, ns2, true_phys_error, true_meas_error
 
     def run_circuit(self, gates, initial_state):
         
@@ -195,6 +214,28 @@ class RepititionCode(Circuit):
             initial_state = gate @ initial_state
 
         return initial_state
+
+    def reset_stabilizers(self, state):
+        new_state = np.zeros(len(state))
+
+        for i in range(len(state)):
+            if state[i][0] != 0:
+                new_component = (i >> 2) << 2
+                new_state[new_component] = state[i][0]
+
+        new_state = new_state.reshape(-1, 1)
+
+        return new_state
+
+    def display_syndrome(self, syndrome):
+        full_syn = []
+        for meas in syndrome:
+            rnd = ['_' if s == 0 else 'e' for s in meas]
+            rnd.append('\n')
+            full_syn.append(''.join(rnd))
+
+        print(''.join(full_syn))
+
 
     def decode(self, syndrome: list, state):
         # print(syndrome, self.decoding_map.values())
@@ -209,9 +250,10 @@ class RepititionCode(Circuit):
 
 code = RepititionCode(3)
 code.run(
-    error_prob=0.0,
+    error_prob=0.04,
     error_weight=3,
-    measurement_noise_prob=0.1,
+    measurement_noise_prob=0.04,
     shots=1,
+    rounds=50,
     random_initial_state=True
 )
