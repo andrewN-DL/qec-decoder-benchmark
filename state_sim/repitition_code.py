@@ -124,7 +124,7 @@ class RepititionCode(Circuit):
                 first_round=True,
             )
 
-            syndrome_measurements.append(syndrome)
+            syndrome_measurements.append(np.array(syndrome))
             true_physical_error.append(phys_error)
             true_measurement_error.append(meas_error)
 
@@ -136,7 +136,7 @@ class RepititionCode(Circuit):
                     measurement_noise_prob=measurement_noise_prob,
                 )
 
-                syndrome_measurements.append(syndrome)
+                syndrome_measurements.append(np.array(syndrome))
                 true_physical_error.append(phys_error)
                 true_measurement_error.append(meas_error)
 
@@ -219,6 +219,10 @@ class RepititionCode(Circuit):
                 new_state[new_component] = state[i][0]
 
         new_state = new_state.reshape(-1, 1)
+
+        norm = np.linalg.norm(new_state)
+        if norm > 0:
+            new_state = new_state / norm
 
         return new_state
 
