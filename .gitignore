@@ -220,3 +220,4 @@ __marimo__/
 *.lock
 plan.txt
 initial_code.ipynb
+.vscode
