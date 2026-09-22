@@ -181,16 +181,16 @@ def match_decode(detection_events: list, possible_errors: list=[]) -> list:
     return matched
 
 
-code = RepititionCode(3, seed=42)
-syndrome = code.run(
-    error_prob=0.04,
-    error_weight=3,
-    measurement_noise_prob=0.04,
-    shots=1,
-    rounds=50,
-    random_initial_state=True
-)
+# code = RepititionCode(3, seed=42)
+# syndrome = code.run(
+#     error_prob=0.04,
+#     error_weight=3,
+#     measurement_noise_prob=0.04,
+#     shots=1,
+#     rounds=50,
+#     random_initial_state=True
+# )
 
-detections = detect_changes(syndrome)
-code.display_syndrome(detections)
-print(match_decode(detections))
+# detections = detect_changes(syndrome)
+# code.display_syndrome(detections)
+# print(match_decode(detections))

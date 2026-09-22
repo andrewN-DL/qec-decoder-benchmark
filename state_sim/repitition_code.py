@@ -171,7 +171,7 @@ class RepititionCode(Circuit):
             if diff != 0:
                 result += 1
 
-            print(diff, true_total_error, predicted_error)
+            # print(diff, true_total_error, predicted_error)
 
         return result/shots
 
@@ -354,14 +354,14 @@ class RepititionCode(Circuit):
                     
 
 
-code = RepititionCode(3, verbose=False)
-error_rate = code.run(
-    physical_error_prob=0.04,
-    error_weight=3,
-    measurement_error_prob=0.04,
-    shots=100,
-    rounds=25,
-    random_initial_state=True
-)
+# code = RepititionCode(3, verbose=False)
+# error_rate = code.run(
+#     physical_error_prob=0.04,
+#     error_weight=3,
+#     measurement_error_prob=0.04,
+#     shots=100,
+#     rounds=25,
+#     random_initial_state=True
+# )
 
-print(f'Error Rate: {error_rate}')
+# print(f'Error Rate: {error_rate}')
