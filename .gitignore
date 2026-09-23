@@ -219,3 +219,18 @@ __marimo__/
 
 *.lock
 plan.txt
+initial_code.ipynb
+.vscode
+
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.pdf

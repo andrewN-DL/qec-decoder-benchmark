@@ -3,9 +3,10 @@ import copy
 
 class Circuit:
 
-    def __init__(self, dim: int):
+    def __init__(self, dim: int, seed: int=None):
         self.R2 = 1 / np.sqrt(2)
         self.dim = dim
+        self.rng = np.random.default_rng(seed)
 
         self.state = np.array([[1]] + [[0]] * (2**dim - 1))
 
@@ -178,7 +179,7 @@ class Circuit:
 
         # Sampling basis state in Z-basis
         # print(np.abs(state.flatten())**2, state**2)
-        sample = np.random.choice(len(state), p=(np.abs(state.flatten())**2).reshape(1, -1)[0])
+        sample = self.rng.choice(len(state), p=(np.abs(state.flatten())**2).reshape(1, -1)[0])
 
         # Measuring relevant bit
         result = self.bin_state(sample, self.dim, display=False)[index]
@@ -195,7 +196,7 @@ class Circuit:
     def _measure_all(self, state):
     
             # Sampling basis state in Z-basis
-            sample = np.random.choice(len(state), p=(np.abs(state.flatten())**2).reshape(1, -1)[0])
+            sample = self.rng.choice(len(state), p=(np.abs(state.flatten())**2).reshape(1, -1)[0])
     
             # Measuring relevant bit
             result = self.bin_state(sample, self.dim, display=True)
@@ -209,8 +210,8 @@ class Circuit:
             print('Running')
             gates = copy.deepcopy(self.gates)
             if noise:
-                if np.random.random() < 0.2:
-                    bit = np.random.randint(3)
+                if self.rng.random() < 0.2:
+                    bit = self.rng.integers(3)
                     gates.insert(3, self.X(bit))
                     print('Hit', bit)
             ss = copy.deepcopy(self.state)

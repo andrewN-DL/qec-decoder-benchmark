@@ -1,0 +1,111 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+\title{Quantum Error Correction Decoder Benchmark}
+\author{Andrew Nestor}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Investigating QEC
+\end{abstract}
+
+\section{Introduction}
+
+This project focused on building a QEC system, starting with a state based simulation of the 3 qubit repitition code
+
+\section{Background}
+
+This project focused on stabilizer codes.
+
+\subsection{Quantum Error Correcting Codes}
+\subsection{Stabilizer Codes}
+\subsection{Repitition Codes}
+\subsection{Topological Codes}
+\subsection{Decoding}
+
+\section{State Simulation}
+
+I started by creating a circuit from scratch.
+This was done by simulatingthe full state as a complex vectors, and gates as unitary matrices.
+
+The gates were implemented as part of the \verb|Circuit| class.
+I implemented \textbf{H}, \textbf{X}, \textbf{Z}, \textbf{S}, and \textbf{CNOT} gates
+All single qubit gates were implemented using \verb|np.kron(G1,G2)| where kron denotes the Kroneker product
+For example, to apply \textbf{H} to qubuts 2 and 3 of a 3-qubit state, we construct
+
+\begin{equation}
+    H = I \oplus H_2 \oplus H_3 
+\end{equation}
+
+Began by focusing on the 3 qubit repitition code. This includes two parity check stabilizers, defined as
+
+\begin{equation}
+    S_1 = Z_1 Z_2 \;\;\;\; S_2 = Z_2 Z_3.
+\end{equation}
+
+Each of these were measures using a pair of \textbf{CNOT} gates from the target qubits onto an ancilla
+
+\subsection{Measurements}
+\subsection{Errors}
+\subsection{Decoding}
+\subsubsection{Matching}
+\subsection{Measuring Logical Errors}
+\subsection{Running}
+
+\begin{verbatim}
+    Instantiate Gates to create initial code (inc. Stabilizers)
+    for shot in shots:    
+        for round in rounds:
+            add errors
+            run gates
+            measure syndrome
+            reset stabilizers
+        decode syndrome
+        predict errors
+
+    get logical error
+        
+\end{verbatim}
+
+\subsection{Validation}
+
+
+\subsection{Experiments}
+
+\begin{itemize}
+    \item Behaviour as $p_m \rightarrow 0$, $p_x \rightarrow 0$
+    \item Different noise models (weights, types, etc)
+    \item Different rounds vs probabilities
+    \item sim speed
+\end{itemize}
+
+
+\section{Stabilizer Simulation}
+
+\section{Noise Models}
+
+\section{Decoding}
+\subsection{Matching - Blossom Algorithm}
+\subsection{Optimisation}
+\subsection{Heuristic Methods}
+\subsection{Machine Learning}
+
+\section{Results}
+
+\section{Conclusions and Future Work}
+
+\subsection{Conclusions}
+\subsection{Future Work}
+\begin{itemize}
+    \item Adapting the NetworkX \verb|max_weight_matching| to the QEC problem
+\end{itemize}
+
+
+
+\end{document}
