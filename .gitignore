@@ -234,3 +234,4 @@ initial_code.ipynb
 *.synctex.gz
 *.toc
 *.pdf
+state_sim/experiments/data/

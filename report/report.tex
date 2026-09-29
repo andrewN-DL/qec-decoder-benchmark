@@ -88,6 +88,22 @@ Each of these were measures using a pair of \textbf{CNOT} gates from the target 
 
 \section{Stabilizer Simulation}
 
+In reality, we do not to simulate the full state to extract a syndrome, make a prediction of the errors that have occured, and measure logical qubit errors.
+Instead, we simulate how stabilizers interact with errors.
+For now, we only focus on correcting errors in memory qubits, i.e. without taking into account any deliberate quantum gates
+To simulate the syndrome in this way, we only need to measure how the errors interact with our stabilizers.
+
+The key concept to this are commutators. The commutator is defined as
+
+\begin{equation}
+    [A, B] = AB - BA
+\end{equation}
+
+the circuit and ancillas (for measuring stabilizers) can be modelled as an n-dim list (n = num data qubits).
+Start with I(n). As the circuit progresses, we can add noise to each qubit. We can define the multiplication relations (P**2 = I, XZ = -Y, etc)
+Every round we measure stabilizers by finding commutation relation between the data qubits and the stabilizers, storing it in an ancilla qubit as -1 if anticommutes, and as +1 is commutes
+This gives us the syndrome (where -1 $\rightarrow$ 1, and 1 $\rightarrow$ 0)
+
 \section{Noise Models}
 
 \section{Decoding}
@@ -104,6 +120,7 @@ Each of these were measures using a pair of \textbf{CNOT} gates from the target 
 \subsection{Future Work}
 \begin{itemize}
     \item Adapting the NetworkX \verb|max_weight_matching| to the QEC problem
+    \item Do we need to only focus on correcting memory errors? OR think about gates?
 \end{itemize}
 
 
