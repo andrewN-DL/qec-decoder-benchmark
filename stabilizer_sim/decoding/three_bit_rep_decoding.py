@@ -1,8 +1,8 @@
-import numpy as np
-
 from typing import Union, List
+
+import numpy as np
 from pymatching import Matching
-import operators as o
+    
 
 def detect_changes(syndrome: list) -> list:
     syndrome = np.array(syndrome)
@@ -12,8 +12,11 @@ def detect_changes(syndrome: list) -> list:
     return syndrome_change
 
 
-def build_matching_graph(rounds, num_stabilizers, px, pm):
+def build_3_qubit_matching_graph(rounds, px, pm):
     matching = Matching()
+    num_stabilizers = 8
+    num_graphs = 4
+    stab_per_graph = int(num_stabilizers / num_graphs)
 
     if px > 0:
         weightx = -np.log(px/(1-px))
@@ -22,14 +25,13 @@ def build_matching_graph(rounds, num_stabilizers, px, pm):
 
 
     for i in range(rounds):
-        
         # Adding physical edges
         if px > 0:
-            matching.add_boundary_edge(num_stabilizers*i, weight=weightx)
-            matching.add_boundary_edge(num_stabilizers*(i + 1) - 1, weight=weightx)
-            for s in range(num_stabilizers - 1):
-                matching.add_edge((num_stabilizers*i)+s, (num_stabilizers*i)+s+1, weight=weightx)
-            
+            for s in range(num_graphs):
+                matching.add_boundary_edge((num_stabilizers*i)+(s*stab_per_graph), weight=weightx)
+                matching.add_boundary_edge((num_stabilizers*i)+(s*stab_per_graph)+1, weight=weightx)
+                matching.add_edge((num_stabilizers*i)+(s*stab_per_graph), (num_stabilizers*i)+(s*stab_per_graph)+1, weight=weightx)
+                
 
         # Adding measurement edges (currently no time boundry TODO)
         if pm > 0:
@@ -70,23 +72,3 @@ def extract_predicted_errors(matched_errors, num_stabilizers, num_data_qubits):
                         errors[-1] += 1
 
     return errors % 2
-
-
-rels = {
-    ('X', 'Z'): '-Y',
-    ('Z', 'X'): 'Y',
-    ('X', 'Y'): 'Z',
-    ('Y', 'X'): '-Z',
-    ('Y', 'Z'): 'X',
-    ('Z', 'Y'): '-X',
-}
-
-# TODO: Check assumptions
-def get_syndrome_bit(state, stabilizer):
-    bit = 0
-    for comp in zip(state, stabilizer):
-        if 'I' not in comp:
-            if comp[0] != comp[1]:
-                bit += 1
-
-    return bit % 2
