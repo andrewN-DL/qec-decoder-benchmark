@@ -4,14 +4,6 @@ import numpy as np
 from pymatching import Matching
     
 
-def detect_changes(syndrome: list) -> list:
-    syndrome = np.array(syndrome)
-
-    syndrome_change = np.abs(np.diff(syndrome, axis=0, prepend=np.zeros((1, syndrome.shape[1]))))
-
-    return syndrome_change
-
-
 def build_3_qubit_matching_graph(rounds, px, pm):
     matching = Matching()
     num_stabilizers = 8
@@ -41,12 +33,6 @@ def build_3_qubit_matching_graph(rounds, px, pm):
 
     return matching
 
-
-def match_errors(matching_graph: Matching, detection_events) -> list:
-
-    matched = matching_graph.decode_to_matched_dets_array(detection_events.flatten())
-    
-    return matched
 
 
 def extract_predicted_errors(matched_errors, num_stabilizers, num_data_qubits):
