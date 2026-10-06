@@ -8,12 +8,12 @@ class Operator:
 
         # TODO: Currently no H and no phase
         self.rels = {
-            ('X', 'Z'): '-Y',
+            ('X', 'Z'): 'Y',
             ('Z', 'X'): 'Y',
             ('X', 'Y'): 'Z',
-            ('Y', 'X'): '-Z',
+            ('Y', 'X'): 'Z',
             ('Y', 'Z'): 'X',
-            ('Z', 'Y'): '-X',
+            ('Z', 'Y'): 'X',
         }
 
         self.ops = dim * ['I']

@@ -6,8 +6,8 @@ from pymatching import Matching
 
 def build_3_qubit_matching_graph(rounds, px, pm):
     matching = Matching()
-    num_stabilizers = 8
-    num_graphs = 4
+    num_stabilizers = 2
+    num_graphs = 1
     stab_per_graph = int(num_stabilizers / num_graphs)
 
     if px > 0:
@@ -35,7 +35,10 @@ def build_3_qubit_matching_graph(rounds, px, pm):
 
 
 
-def extract_predicted_errors(matched_errors, num_stabilizers, num_data_qubits):
+def extract_3_qubit_predicted_errors(matched_errors):
+    num_data_qubits = 3
+    num_stabilizers = 2
+
     errors = np.zeros(num_data_qubits)
     for match in matched_errors:
         # TODO. This works specifically for 3 bit repitition code with bitflip noise
@@ -44,17 +47,18 @@ def extract_predicted_errors(matched_errors, num_stabilizers, num_data_qubits):
             s2, t2 = match[1] % num_stabilizers, match[1] // num_stabilizers
 
             if s1 - s2 != 0:
-                m1, m2 = min(s1, s2), max(s1, s2)
-                for i in range(m1, m2):
-                    errors[i + 1] += 1
+                # print(s1, s2, 1)
+                errors[1] += 1
         else:
             for i in match:
                 if i != -1:
-                    s = i % num_data_qubits
+                    s = i % num_stabilizers
 
                     if s == 0:
+                        # print(i, 0)
                         errors[0] += 1
                     else:
+                        # print(i, 2)
                         errors[-1] += 1
 
     return errors % 2
