@@ -8,5 +8,5 @@ import decoding.three_bit_rep_decoding as tr
 
 
 class ToricCode(Code):
-    def __inti__(self):
-        pass
+    def __inti__(self, verbose: bool=False, seed: int=None):
+        super().__init__(verbose, seed)
