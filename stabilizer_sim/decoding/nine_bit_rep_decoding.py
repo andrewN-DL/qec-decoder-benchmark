@@ -40,6 +40,10 @@ def build_9_qubit_matching_graph(rounds, px, pz, pm):
             if i < rounds - 1:
                 for s in range(num_stabilizers):
                     matching.add_edge((num_stabilizers*i)+s, (num_stabilizers*(i+1))+s, weight=weightm)
+            # TODO: PyMatching doesn't allow moltiple boundary edges on the same node (spatial and temporal)
+            # else:
+            #     for s in range(num_stabilizers):
+            #         matching.add_boundary_edge((num_stabilizers*i)+s, weight=weightm)
 
     return matching
 
