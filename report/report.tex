@@ -2,6 +2,7 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{graphicx}
 \usepackage{hyperref}
+\usepackage{braket}
 
 \title{Quantum Error Correction Decoder Benchmark}
 \author{Andrew Nestor}
@@ -25,6 +26,42 @@ This project focused on stabilizer codes.
 
 \subsection{Quantum Error Correcting Codes}
 \subsection{Stabilizer Codes}
+For a given QECC $Q$, we can define its stabilizers as the set $S$
+\begin{equation}
+    {S_i | S_i\ket{\psi} = \ket{\psi} \forall \psi \in Q}
+\end{equation}
+
+This full set defines a group (stabilizer group). We will generally work with the generators of this group.
+In general, the generators of a group are not necessarily uniquely defined.
+
+\subsubsection{Syndrome Extraction}
+To find errors in an element of a stabilizer code, we can focus on the generators of the stabilizer group.
+For a stabilizer group with $n$ generators, these are ${S_1, \ldots ,S_n}$. For now we will refer to these generators simply as the stabilizers
+
+If a state is not a code state, then at least one stabilizer will not satisfy $S_i\ket{\psi} = \ket{\psi}$ (ignoring logical errors for now).
+
+When an error $E$ is present and we measure with stabilizer $S_i$, the resulting state is $S_iE\ket{\psi}$.
+
+
+All single qubit Paulis either commute or anticommute.
+If the error commutes with the stabilizer, then this is equivilant to $ES_i\ket{\psi} = E\ket{\psi}$
+If the error does not commutes with the stabilizer, then this is equivilant to $ES_i\ket{\psi} = E\ket{\psi}$
+
+As products and of operators can be defined pointwise, this means that the commutator for two n-qubit operators of the form $P = P_1 \oplus \ldot  \oplus P_n$ is equal to the product of the commutators of the components
+Therefore if an odd number of anticommuting components the operators anticommute, otherwise they commute. This is often realised in stabilizers as parity check operators
+
+We can measure the eigenvalues of each stabilizer on the state. If any of them return -1, that indicates an error
+
+In practice, we usually use \textbf{CNOT} operators to measure, potentially with basis changes before and after, to perform these parity checks.
+
+Practically this creates a map 
+\begin{equation}
+    \ket{\psi}\ket{0} \rightarrow \frac{1}{\sqrt{2}} (\ket{\psi}\ket{0} + S\ket{\psi}\ket{1})
+\end{equation}
+
+from which we measure the ancilla
+
+
 \subsection{Repitition Codes}
 \subsection{Topological Codes}
 \subsection{Decoding}
@@ -88,9 +125,35 @@ Each of these were measures using a pair of \textbf{CNOT} gates from the target 
 
 \section{Stabilizer Simulation}
 
+In reality, we do not to simulate the full state to extract a syndrome, make a prediction of the errors that have occured, and measure logical qubit errors.
+Instead, we simulate how stabilizers interact with errors.
+For now, we only focus on correcting errors in memory qubits, i.e. without taking into account any deliberate quantum gates
+To simulate the syndrome in this way, we only need to measure how the errors interact with our stabilizers.
+
+The key concept to this are commutators. The commutator is defined as
+
+\begin{equation}
+    [A, B] = AB - BA
+\end{equation}
+
+the circuit and ancillas (for measuring stabilizers) can be modelled as an n-dim list (n = num data qubits).
+Start with $I(n)$. As the circuit progresses, we can add noise to each qubit.
+
+\subsection{Syndrome Extraction}
+Initially only considering Pauli errors. We kept track of a state. This was multiplied by an error when it occured
+Did not need to keep track of phase factors for individual operators as these multiply the whole operator and have no effect on commutators
+We can define the multiplication relations (P**2 = I, XZ = Y, etc). In practice, any two different non-identity Pauli operators do not commute
+Every round we measure stabilizers by finding commutation relation between the data qubits and the stabilizers, storing it in an ancilla qubit as -1 if anticommutes, and as +1 is commutes
+This gives us the syndrome (where -1 $\rightarrow$ 1, and 1 $\rightarrow$ 0)
+
 \section{Noise Models}
 
+We are initially treating each qubit as an independent channel, using \textbf{X} and \textbf{Z} errors. \textbf{Y} errors to be considered int he future (to make fully depolarizing noise Pauli channel)
+
+
 \section{Decoding}
+Each block is effectively independent (3 Zs and 1 X). If any of them have a logical error, the state is no longer a code state
+Could do a further majority vote
 \subsection{Matching - Blossom Algorithm}
 \subsection{Optimisation}
 \subsection{Heuristic Methods}
@@ -104,6 +167,9 @@ Each of these were measures using a pair of \textbf{CNOT} gates from the target 
 \subsection{Future Work}
 \begin{itemize}
     \item Adapting the NetworkX \verb|max_weight_matching| to the QEC problem
+    \item Do we need to only focus on correcting memory errors? OR think about gates?
+    \item Codes to look into: 9 qubit repitition code, toric code, (5,1,2) surface code, colour code, qLDPC codes
+    \item Decoders to look into: (Classical - Belief Propogation), Union Find; qLDPC codes -  Small Set-Flip, Ordered Statistics Decoding
 \end{itemize}
 
 
