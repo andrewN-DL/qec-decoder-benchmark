@@ -56,20 +56,16 @@ def extract_9_qubit_predicted_errors(matched_errors):
     z_errors = np.zeros(int(num_data_qubits / 3))
 
     for match in matched_errors:
-        # TODO. This works specifically for 3 bit repitition code with bitflip noise
         s1, t1 = match[0] % num_stabilizers, match[0] // num_stabilizers
         s2, t2 = match[1] % num_stabilizers, match[1] // num_stabilizers
 
         subgraph = int(s1 // 2)
 
-        # TODO: need to deal with z-errors separately
         if subgraph != 3:
             if -1 not in match:
                 assert s1 // 2 == s2 //2
 
                 if s1 - s2 != 0:
-                    # m1, m2 = min(s1, s2), max(s1, s2)
-                    # for i in range(m1, m2):
                     x_errors[(3*subgraph) + 1] += 1
             else:
                 for i in match:

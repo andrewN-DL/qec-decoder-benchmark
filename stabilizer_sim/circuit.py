@@ -28,7 +28,7 @@ class NineQubitRepititionCode(Code):
         self.intial_state = o.Operator(9)
         
         self.stabs = {
-            'S1': o.Z(9, [0, 1]),
+            'S1': o.Z(dim=9, positions=[0, 1]),
             'S2': o.Z(9, [1, 2]),
             'S3': o.Z(9, [3, 4]),
             'S4': o.Z(9, [4, 5]),
@@ -87,6 +87,7 @@ class NineQubitRepititionCode(Code):
             x_indices, z_indices = [idx for idx, i in enumerate(x_errors) if i], [idx for idx, i in enumerate(z_errors) if i]
             
             state = state * o.X(9, x_indices)
+            # print(state, o.Z(9, z_indices))
             state = state * o.Z(9, z_indices)
             # print(state)
             
