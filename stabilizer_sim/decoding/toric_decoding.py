@@ -14,7 +14,7 @@ def build_toric_matching_graph(distance, rounds, px, pz, pm):
     num_z_stabilizers = distance**2
 
     # d**2 spatial and temporal for all rounds. No temporal on last
-    num_st_z = (rounds) * (distance**2)
+    num_detectors_z = (rounds) * (distance**2)
 
     if px == 0:
         px = 1e-6
@@ -45,15 +45,15 @@ def build_toric_matching_graph(distance, rounds, px, pz, pm):
                 matching.add_edge(org, dest, weight=weightx)
 
                 # Horizontal connection (X stabilizers)
-                org = (i*distance + j) + r*(num_z_stabilizers) + num_st_z
-                dest = (i*distance + j) + r*(num_z_stabilizers) + 1 + num_st_z
+                org = (i*distance + j) + r*(num_z_stabilizers) + num_detectors_z
+                dest = (i*distance + j) + r*(num_z_stabilizers) + 1 + num_detectors_z
                 if dest % distance == 0:
                     dest -= distance
                 matching.add_edge(org, dest, weight=weightz)
 
                 # Vertical connection (X stabilizers)
-                org = (i*distance + j) + r*(num_z_stabilizers) + num_st_z
-                dest = ((i + 1)*distance + j) + r*(num_z_stabilizers) + num_st_z
+                org = (i*distance + j) + r*(num_z_stabilizers) + num_detectors_z
+                dest = ((i + 1)*distance + j) + r*(num_z_stabilizers) + num_detectors_z
                 if dest % num_z_stabilizers < distance:
                     dest -= num_z_stabilizers
                 matching.add_edge(org, dest, weight=weightz)
@@ -61,55 +61,131 @@ def build_toric_matching_graph(distance, rounds, px, pz, pm):
         # Adding measurement edges (currently no time boundry TODO)
         if r < rounds - 1:
             for s in range(distance**2):
-                matching.add_edge((num_z_stabilizers*r)+s, (num_z_stabilizers*(r+1))+s, weight=weightm)
-                matching.add_edge((num_z_stabilizers*r)+s+num_st_z, (num_z_stabilizers*(r+1))+s+num_st_z, weight=weightm)
+                matching.add_edge(
+                    (num_z_stabilizers*r)+s,
+                    (num_z_stabilizers*(r+1))+s,
+                    weight=weightm)
+                
+                matching.add_edge(
+                    (num_z_stabilizers*r)+s+num_detectors_z,
+                    (num_z_stabilizers*(r+1))+s+num_detectors_z,
+                    weight=weightm
+                )
 
     return matching
 
 
-def extract_toric_predicted_errors(matched_errors):
-    num_data_qubits = 9
-    num_stabilizers = 8
-    subgraphs = 4
-    x_errors = np.zeros(num_data_qubits)
-    z_errors = np.zeros(int(num_data_qubits / 3))
+# def extract_toric_predicted_errors(matched_errors, distance, rounds):
+#     num_z_stabilizers = distance ** 2
+#     num_z_detectors = rounds * num_z_stabilizers
 
-    for match in matched_errors:
-        s1, t1 = match[0] % num_stabilizers, match[0] // num_stabilizers
-        s2, t2 = match[1] % num_stabilizers, match[1] // num_stabilizers
+#     x_errors = np.zeros([2*distance, distance])
+#     z_errors = np.zeros([2*distance, distance])
 
-        subgraph = int(s1 // 2)
+#     for match in matched_errors:
 
-        if subgraph != 3:
-            if -1 not in match:
-                assert s1 // 2 == s2 //2
+#         assert (match[0] < num_z_detectors) == (match[1] < num_z_detectors), 'X and Z errors matched'
 
-                if s1 - s2 != 0:
-                    x_errors[(3*subgraph) + 1] += 1
+#         if match[0] < num_z_detectors:
+#             error_type = 0
+#         else:
+#             error_type = 1
+#             match = [match[0] - num_z_detectors, match[1] - num_z_detectors]
+
+#         match = sorted(match)
+
+#         s1, t1 = match[0] % num_z_stabilizers, match[0] // num_z_stabilizers
+#         s2, t2 = match[1] % num_z_stabilizers, match[1] // num_z_stabilizers
+
+#         # [43, 44] -> [7, 8] -> [2, 1], [2, 2]
+#         # [44, 47] -> [8, 2] -> [2, 2], [0, 2]
+#         i1, j1 = s1 // distance, s1 % distance
+#         i2, j2 = s2 // distance, s2 % distance
+
+#         print('Error Type', error_type)
+#         print(i1, j1)
+#         print(i2, j2, 'Two')
+
+#         # v_x_errors = min(((i1-i2) % distance), ((i2-i1) % distance))
+#         v_x_errors = i2 - i1
+#         h_x_errors = j2 - j1
+
+#         print('dist', v_x_errors, h_x_errors)
+
+#         if ((i2-i1) // distance) < (distance / 2):
+#             v_start = i1
+#             v_end = i2
+#         else:
+#             v_start = i2
+#             v_end = i1
+
+#         for er in range(v_x_errors):
+#             if error_type == 0: 
+#                 x_errors[2*(v_start + er) % (2 * distance), j1] += 1
+#             else:
+#                 z_errors[((2*(v_start) + er) + 1) % (distance * 2), j2] += 1
+
+#         if ((j2-j1) % distance) < (distance / 2): 
+#             h_start = j1
+#         else:
+#             h_start = j2
+
+#         for er in range(h_x_errors):
+#             if error_type == 0:
+#                 x_errors[2*(v_end) + 1, (h_start + (er)) % distance] += 1
+#             else:
+#                 z_errors[2*((v_end)), (h_start + er) % distance] += 1
+
+#     return x_errors % 2, z_errors % 2
+
+
+def extract_toric_predicted_errors(matched_errors, distance, rounds):
+    d = distance
+    n_stab = d * d
+    n_z_det = rounds * n_stab
+
+    x_errors = np.zeros((2*d, d), dtype=np.uint8)
+    z_errors = np.zeros((2*d, d), dtype=np.uint8)
+
+    def signed_step(a, b):
+        # shortest signed displacement a -> b on a cycle of length d
+        return ((b - a + d // 2) % d) - d // 2
+
+    for u, v in matched_errors:
+        u, v = int(u), int(v)
+        assert (u < n_z_det) == (v < n_z_det), 'X and Z errors matched'
+
+        is_x = u < n_z_det
+        if not is_x:
+            u -= n_z_det
+            v -= n_z_det
+
+        s1, s2 = u % n_stab, v % n_stab
+        i1, j1 = divmod(s1, d)
+        i2, j2 = divmod(s2, d)
+
+        # vertical leg: column j1, from row i1 to row i2
+        dv = signed_step(i1, i2)
+        step = 1 if dv > 0 else -1
+        i = i1
+        for _ in range(abs(dv)):
+            k = i if step > 0 else (i - 1) % d      # lower endpoint of edge
+            if is_x:
+                x_errors[2*k + 1, j] ^= 1
             else:
-                for i in match:
-                    if i != -1:
-                        s = int((i % num_stabilizers) % 2)
-                        
-                        if s == 0:
-                            x_errors[(3 * subgraph)] += 1
-                        else:
-                            x_errors[(3 * subgraph) + 2] += 1
-        else:
-            if -1 not in match:
-                assert s1 // 2 == s2 //2
+                z_errors[2*k + 1, j1] ^= 1
+            i = (i + step) % d
 
-                if s1 - s2 != 0:
-                    z_errors[1] += 1
+        # horizontal leg: row i2, from column j1 to column j2
+        dh = signed_step(j1, j2)
+        step = 1 if dh > 0 else -1
+        j = j1
+        for _ in range(abs(dh)):
+            k = j if step > 0 else (j - 1) % d
+            if is_x:
+                x_errors[2*i, k] ^= 1
             else:
-                for i in match:
-                    if i != -1:
-                        s = int((i % num_stabilizers) % 2)
-                        
-                        if s == 0:
-                            z_errors[0] += 1
-                        else:
-                            z_errors[2] += 1
+                z_errors[2*i2, k] ^= 1
+            j = (j + step) % d
 
-
-    return x_errors % 2, z_errors % 2
+    return x_errors, z_errors

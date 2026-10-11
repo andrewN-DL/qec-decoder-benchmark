@@ -1,7 +1,7 @@
 import numpy as np
 
 import operators as o
-from base_code import Code
+from codes.base_code import Code
 import decoding.utils as d
 import decoding.nine_bit_rep_decoding as nr
 import decoding.three_bit_rep_decoding as tr
@@ -98,7 +98,7 @@ class ThreeQubitRepititionCode(Code):
             print('Detections', detections)
             print('Matches', matches)
             print('Predicted', predicted_errors)
-            print('True', true_phys_error['Z'])
+            print('True', true_phys_error)
             print(sum(diff))
 
         return 0
