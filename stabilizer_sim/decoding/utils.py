@@ -6,7 +6,8 @@ from pymatching import Matching
 def detect_changes(syndrome: list) -> list:
     syndrome = np.array(syndrome)
 
-    syndrome_change = np.abs(np.diff(syndrome, axis=0, prepend=np.zeros((1, syndrome.shape[1]))))
+    prepend = np.zeros((1,) + syndrome.shape[1:], dtype=syndrome.dtype)
+    syndrome_change = np.abs(np.diff(syndrome, axis=0, prepend=prepend))
 
     return syndrome_change
 

@@ -1,0 +1,99 @@
+import numpy as np
+
+import operators as o
+from codes.base_code import Code
+import decoding.utils as d
+import decoding.toric_decoding as to
+
+
+class ToricCode(Code):
+    def __init__(self, dist, verbose: bool=False, seed: int=None):
+        super().__init__(verbose, seed)
+
+        self.dist = dist
+
+
+    def meas_stab_z(self, state, i, j):
+        # Face operator (Z1 Z2 Z3 Z4)
+        relevant_data_bits = [
+            state[2*i, j],
+            state[2*i+1, j],
+            state[2*i+1, (j+1) % self.dist],
+            state[(2*i+2) % (2*self.dist), j],
+            ]
+
+        parity = sum([1 for el in relevant_data_bits if el not in ['I', 'X']]) % 2
+
+        return parity
+    
+
+    def meas_stab_x(self, state, i, j):
+        # Vertex operator (X1 X2 X3 X4)
+        relevant_data_bits = [
+            state[(2*i-1) % (2*self.dist), j],
+            state[2*i, (j-1) % self.dist],
+            state[2*i, j],
+            state[2*i+1, j],
+            ]
+        
+        parity = sum([1 for el in relevant_data_bits if el not in ['I', 'Z']]) % 2
+        
+        return parity
+
+    def run(
+            self,
+            rounds,
+            px,
+            pz,
+            pm,
+    ):
+
+        z_stabs = np.zeros([self.dist, self.dist])
+        x_stabs = np.zeros([self.dist, self.dist])
+
+
+        initial_state = np.array(2 * self.dist * [self.dist * ['I']] )
+        initial_state = o.Operator([2*self.dist, self.dist])
+
+        matching_graph = to.build_toric_matching_graph(self.dist, rounds, px, pz, pm)
+
+
+        x_syndrome = []
+        z_syndrome = []
+        for _ in range(rounds):
+            x_noise = np.where(np.random.random((2*self.dist, self.dist)) < px, 'X', 'I')
+            z_noise = np.where(np.random.random((2*self.dist, self.dist)) < pz, 'Z', 'I')
+            o1, o2 = o.Operator([2*self.dist, self.dist]), o.Operator([2*self.dist, self.dist])
+            o1.ops = x_noise
+            o2.ops = z_noise
+            initial_state = initial_state * o1 * o2
+
+            z_syndrome_t = np.zeros([self.dist, self.dist])
+            x_syndrome_t = np.zeros([self.dist, self.dist])
+            for i in range(self.dist):
+                for j in range(self.dist):
+                    bit = self.meas_stab_z(initial_state, i, j)
+                    z_syndrome_t[i, j] = bit
+                    bit = self.meas_stab_x(initial_state, i, j)
+                    x_syndrome_t[i, j] = bit
+
+            x_syndrome.append(x_syndrome_t)
+            z_syndrome.append(z_syndrome_t)
+
+        x_detections, z_detections = d.detect_changes(x_syndrome), d.detect_changes(z_syndrome)
+
+        matches = d.match_errors(matching_graph, np.array([x_detections, z_detections]))
+       
+        predicted_errors = to.extract_toric_predicted_errors(matches, self.dist, rounds)
+
+        if self.verbose:
+            print('Z\n', x_detections, '\n\nX \n' ,z_detections, '\n\n')
+            print(matches)
+            print(predicted_errors)
+            for i in range(3):
+                print('  ',predicted_errors[0][2*i],'\n',  predicted_errors[0][2*i + 1])
+            print('\n\n')
+            for i in range(3):
+                print('  ',predicted_errors[1][2*i],'\n',  predicted_errors[1][2*i + 1])
+
+        # TODO: check EpEt in Stabilizer (forms a continuious loop)
