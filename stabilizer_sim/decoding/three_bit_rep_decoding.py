@@ -10,10 +10,13 @@ def build_3_qubit_matching_graph(rounds, px, pm):
     num_graphs = 1
     stab_per_graph = int(num_stabilizers / num_graphs)
 
-    if px > 0:
-        weightx = -np.log(px/(1-px))
-    if pm > 0:
-        weightm = -np.log(pm/(1-pm))
+    if px == 0:
+        px = 1e-6
+    if pm == 0:
+        pm = 1e-6
+    
+    weightx = -np.log(px/(1-px))
+    weightm = -np.log(pm/(1-pm))
 
 
     for i in range(rounds):
