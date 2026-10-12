@@ -12,7 +12,7 @@ How does logical error rate change when a decoder's assumed noise model differs 
 - **Stabiliser simulator:** representation and manipulation of stabiliser states and operators.
 - **3-qubit repetition code:** bit-flip noise, syndrome extraction, decoding, and logical-error-rate estimation.
 - **9-qubit Shor code:** stabiliser definitions, physical error tracking, syndrome extraction, and decoding experiments.
-- **Toric code:** stabiliser structure and matching-based decoding, extending the project to a topological quantum error-correcting code.
+- **Toric code:** stabiliser structure and space-time matching-based decoding, extending the project to a topological QECC.
 - **Repeated syndrome extraction:** multiple noisy measurement rounds, detector-event generation, and space-time decoding.
 - **MWPM decoding:** construction of weighted matching graphs and integration with PyMatching.
 
@@ -20,9 +20,7 @@ How does logical error rate change when a decoder's assumed noise model differs 
 
 - Compared the single-round repetition-code logical error rate against the analytical majority-vote result:
 
-  \[
-  P_L = 3p^2 - 2p^3
-  \]
+  $$ P_L = 3p^2 - 2p^3 $$
 
   ![Repetition-code logical error rate](figs/3bit_px.png)
 - Investigated the effects of physical bit-flip noise and syndrome-measurement noise on decoding performance.
@@ -31,6 +29,7 @@ How does logical error rate change when a decoder's assumed noise model differs 
 
 ## In Progress
 
+- Toric code logical error rate estimation
 - Validating repeated-round decoding, including temporal boundaries and noisy syndrome histories.
 - Systematically separating logical failures from residual errors that leave the code space.
 - Benchmarking decoding performance under noise-model mismatch.
@@ -47,4 +46,4 @@ How does logical error rate change when a decoder's assumed noise model differs 
 
 ## Project Direction
 
-The next stage is to establish reliable baselines for each code and decoder, then investigate how decoding performance degrades under noise-model mismatch. Aiming to to build a reproducible benchmark with clearly defined metrics, controlled experiments, and comparisons against established decoding methods.
+The next stage is to establish reliable baselines for each code and decoder, then investigate how decoding performance degrades under noise-model mismatch. Aiming to build a reproducible benchmark with clearly defined metrics, controlled experiments, and comparisons against established decoding methods.
