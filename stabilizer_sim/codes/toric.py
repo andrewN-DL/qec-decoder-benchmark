@@ -11,6 +11,7 @@ class ToricCode(Code):
         super().__init__(verbose, seed)
 
         self.dist = dist
+        self.initial_state = o.Operator([2*self.dist, self.dist])
 
 
     def meas_stab_z(self, state, i, j):
@@ -48,33 +49,27 @@ class ToricCode(Code):
             pm,
     ):
 
-        z_stabs = np.zeros([self.dist, self.dist])
-        x_stabs = np.zeros([self.dist, self.dist])
-
-
-        initial_state = np.array(2 * self.dist * [self.dist * ['I']] )
-        initial_state = o.Operator([2*self.dist, self.dist])
+        state = self.initial_state.copy()
 
         matching_graph = to.build_toric_matching_graph(self.dist, rounds, px, pz, pm)
-
 
         x_syndrome = []
         z_syndrome = []
         for _ in range(rounds):
-            x_noise = np.where(np.random.random((2*self.dist, self.dist)) < px, 'X', 'I')
-            z_noise = np.where(np.random.random((2*self.dist, self.dist)) < pz, 'Z', 'I')
+            x_noise = np.where(self.rng.random((2*self.dist, self.dist)) < px, 'X', 'I')
+            z_noise = np.where(self.rng.random((2*self.dist, self.dist)) < pz, 'Z', 'I')
             o1, o2 = o.Operator([2*self.dist, self.dist]), o.Operator([2*self.dist, self.dist])
             o1.ops = x_noise
             o2.ops = z_noise
-            initial_state = initial_state * o1 * o2
+            state = state * o1 * o2
 
             z_syndrome_t = np.zeros([self.dist, self.dist])
             x_syndrome_t = np.zeros([self.dist, self.dist])
             for i in range(self.dist):
                 for j in range(self.dist):
-                    bit = self.meas_stab_z(initial_state, i, j)
+                    bit = self.meas_stab_z(state, i, j)
                     z_syndrome_t[i, j] = bit
-                    bit = self.meas_stab_x(initial_state, i, j)
+                    bit = self.meas_stab_x(state, i, j)
                     x_syndrome_t[i, j] = bit
 
             x_syndrome.append(x_syndrome_t)
@@ -89,11 +84,51 @@ class ToricCode(Code):
         if self.verbose:
             print('Z\n', x_detections, '\n\nX \n' ,z_detections, '\n\n')
             print(matches)
-            print(predicted_errors)
+            print('True Errors:\n',state)
             for i in range(3):
                 print('  ',predicted_errors[0][2*i],'\n',  predicted_errors[0][2*i + 1])
             print('\n\n')
             for i in range(3):
                 print('  ',predicted_errors[1][2*i],'\n',  predicted_errors[1][2*i + 1])
 
-        # TODO: check EpEt in Stabilizer (forms a continuious loop)
+        # TODO: check EpEt in Stabilizer (forms a continuious loop dS)
+        # Can do this by checking if it crosses a 'boundary' an odd number of times
+
+        error = self.check_error(state, predicted_errors)
+
+        return state, predicted_errors, error
+
+    # TODO: Deal with Z errors
+    def check_error(
+            self,
+            final_state,
+            predicted_errors
+    ):
+
+        '''
+        Starting with X errors. Et = true errors, Ep = predicted errors
+        EtEp is always a continuious loop. S = set of faces of graph (element of stabilizer group)
+        If EtEp in dS (boundaries of S) then no logical error
+        Else logical operation (in N/S)
+        If EtEp in dS, the loop will pass a given row/col an even number of times
+        Otherwise it will be an odd number of times
+        '''
+
+        true_errors_x = np.isin(final_state.ops, ['Y', 'X'])
+        x_errors = predicted_errors[0]
+
+        combined_x = np.array(x_errors ^ true_errors_x)
+
+        error = [0, 0]
+
+        # Checking one row
+        if sum(combined_x[1, :]) % 2 == 1:
+            error[0] = 1 
+
+        # Checking one column
+        h_vals = [combined_x[2*v, 0] for v in range(self.dist)]
+        if sum(h_vals) % 2 == 1:
+            error[1] = 1 
+
+
+        return error
