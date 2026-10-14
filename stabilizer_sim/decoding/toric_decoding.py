@@ -169,11 +169,11 @@ def extract_toric_predicted_errors(matched_errors, distance, rounds):
         step = 1 if dv > 0 else -1
         i = i1
         for _ in range(abs(dv)):
-            k = i if step > 0 else (i - 1) % d      # lower endpoint of edge
+            k = i if step > 0 else (i - 1) % d
             if is_x:
-                x_errors[2*k + 1, j] ^= 1
+                x_errors[2*k + 1, j1] ^= 1
             else:
-                z_errors[2*k + 1, j1] ^= 1
+                z_errors[2*((k + 1) % d), j1] ^= 1
             i = (i + step) % d
 
         # horizontal leg: row i2, from column j1 to column j2
@@ -183,9 +183,9 @@ def extract_toric_predicted_errors(matched_errors, distance, rounds):
         for _ in range(abs(dh)):
             k = j if step > 0 else (j - 1) % d
             if is_x:
-                x_errors[2*i, k] ^= 1
+                x_errors[2*i2, k] ^= 1
             else:
-                z_errors[2*i2, k] ^= 1
+                z_errors[2*i2 + 1, (k + 1) % d] ^= 1
             j = (j + step) % d
 
     return x_errors, z_errors
