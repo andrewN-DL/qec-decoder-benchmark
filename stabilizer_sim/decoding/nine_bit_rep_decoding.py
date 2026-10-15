@@ -4,14 +4,15 @@ import numpy as np
 from pymatching import Matching
 
 
-def build_9_qubit_matching_graph(rounds, px, pz, pm):
+def build_9_qubit_matching_graph(rounds, px, py, pz, pm):
     matching = Matching()
     num_stabilizers = 8
     num_graphs = 4
     stab_per_graph = int(num_stabilizers / num_graphs)
 
-
     if px == 0:
+        px = 1e-6
+    if py == 0:
         px = 1e-6
     if pz == 0:
         pz = 1e-6
@@ -19,6 +20,7 @@ def build_9_qubit_matching_graph(rounds, px, pz, pm):
         pm = 1e-6
     
     weightx = -np.log(px/(1-px))
+    weighty = -np.log(py/(1-py))
     weightz = -np.log(pz/(1-pz))
     weightm = -np.log(pm/(1-pm))
 
@@ -44,6 +46,8 @@ def build_9_qubit_matching_graph(rounds, px, pz, pm):
             # else:
             #     for s in range(num_stabilizers):
             #         matching.add_boundary_edge((num_stabilizers*i)+s, weight=weightm)
+        
+        # Adding Y edges
 
     return matching
 
