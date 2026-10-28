@@ -28,7 +28,7 @@ This project focused on stabilizer codes.
 \subsection{Stabilizer Codes}
 For a given QECC $Q$, we can define its stabilizers as the set $S$
 \begin{equation}
-    {S_i | S_i\ket{\psi} = \ket{\psi} \forall \psi \in Q}
+    \{ S_i \; | \; S_i\ket{\psi} = \ket{\psi} \forall \psi \in Q \}
 \end{equation}
 
 This full set defines a group (stabilizer group). We will generally work with the generators of this group.
@@ -47,7 +47,7 @@ All single qubit Paulis either commute or anticommute.
 If the error commutes with the stabilizer, then this is equivilant to $ES_i\ket{\psi} = E\ket{\psi}$
 If the error does not commutes with the stabilizer, then this is equivilant to $ES_i\ket{\psi} = E\ket{\psi}$
 
-As products and of operators can be defined pointwise, this means that the commutator for two n-qubit operators of the form $P = P_1 \oplus \ldot  \oplus P_n$ is equal to the product of the commutators of the components
+As products and of operators can be defined pointwise, this means that the commutator for two n-qubit operators of the form $P = P_1 \oplus \dot  \oplus P_n$ is equal to the product of the commutators of the components
 Therefore if an odd number of anticommuting components the operators anticommute, otherwise they commute. This is often realised in stabilizers as parity check operators
 
 We can measure the eigenvalues of each stabilizer on the state. If any of them return -1, that indicates an error
@@ -142,9 +142,9 @@ Start with $I(n)$. As the circuit progresses, we can add noise to each qubit.
 \subsection{Syndrome Extraction}
 Initially only considering Pauli errors. We kept track of a state. This was multiplied by an error when it occured
 Did not need to keep track of phase factors for individual operators as these multiply the whole operator and have no effect on commutators
-We can define the multiplication relations (P**2 = I, XZ = Y, etc). In practice, any two different non-identity Pauli operators do not commute
+We can define the multiplication relations ($P^2 = I, XZ = Y,$ etc). In practice, any two different non-identity Pauli operators do not commute
 Every round we measure stabilizers by finding commutation relation between the data qubits and the stabilizers, storing it in an ancilla qubit as -1 if anticommutes, and as +1 is commutes
-This gives us the syndrome (where -1 $\rightarrow$ 1, and 1 $\rightarrow$ 0)
+This gives us the syndrome (where $-1 \rightarrow 1$, and $1 \rightarrow 0$)
 
 \section{Noise Models}
 
@@ -175,15 +175,8 @@ Could do a further majority vote
 For surface code
 Maybe dont even need an initial state? Maybe don't need to measure stabilizers.
 Can just directly add noise and generate what that would look like in the detectors/syndrome.
-Generate blank syndrome. // 
+Generate blank syndrome.
 
-[[0, 0, 0,]] //
-[[0, 0, 0,]]//
-[[0, 0, 0,]]//
-
-[[1, 1, 0,]] //
-[[0, 0, 1,]] //
-[[0, 0, 1,]]//
 
 
 

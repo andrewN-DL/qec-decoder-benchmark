@@ -5,6 +5,8 @@ from codes.base_code import Code
 import decoding.utils as d
 import decoding.toric_decoding as to
 
+import time
+
 
 class ToricCode(Code):
     def __init__(self, dist, verbose: bool=False, seed: int=None):
@@ -47,6 +49,7 @@ class ToricCode(Code):
             shots,
             rounds,
             px,
+            py,
             pz,
             pm,
             show_errors=False,
@@ -54,11 +57,30 @@ class ToricCode(Code):
 
         matching_graph = to.build_toric_matching_graph(self.dist, rounds, px, pz, pm)
 
+        # Checking which part of the process is slowing down the run
+        self.times = {
+            'matching': [],
+            'det_conv': [],
+            'get_synd': [],
+            'noise_gen': [],
+            'pred_error': [],
+            'check_error': [],
+            'shot': [],
+            'mult_ops': [],
+            'measure_stabs': []
+        }
+
         result = 0
         for _ in range(shots):
-            shot_res = self.run_round(rounds, px, pz, pm, matching_graph)
+            st = time.time()
+            shot_res = self.run_round(rounds, px, py, pz, pm, matching_graph)
             result += shot_res[0][0]
-            # print(shot_res[0][1])
+            self.times['shot'].append(time.time() - st)
+
+
+        # for k, v in self.times.items():
+        #     print(k, np.mean(v))
+
 
         # Return last error/prediction
         if show_errors:
@@ -70,6 +92,7 @@ class ToricCode(Code):
         self,
         rounds,
         px,
+        py,
         pz,
         pm,
         matching_graph
@@ -80,34 +103,69 @@ class ToricCode(Code):
         
         x_syndrome = []
         z_syndrome = []
-        for _ in range(rounds):
-            x_noise = np.where(self.rng.random((2*self.dist, self.dist)) < px, 'X', 'I')
-            z_noise = np.where(self.rng.random((2*self.dist, self.dist)) < pz, 'Z', 'I')
-            o1, o2 = o.Operator([2*self.dist, self.dist]), o.Operator([2*self.dist, self.dist])
+
+        # Generating noise
+        t = time.time()
+        x_noise_full = self.rng.random((rounds, 2*self.dist, self.dist))
+        y_noise_full = self.rng.random((rounds, 2*self.dist, self.dist))
+        z_noise_full = self.rng.random((rounds, 2*self.dist, self.dist))
+
+        x_meas_noise_full = self.rng.random((rounds, self.dist, self.dist))
+        z_meas_noise_full = self.rng.random((rounds, self.dist, self.dist))
+        self.times['noise_gen'].append(time.time() - t)
+
+        t = time.time()
+
+        for rnd in range(rounds):
+
+            x_noise = np.where(x_noise_full[rnd] < px, 'X', 'I')
+            y_noise = np.where(y_noise_full[rnd] < py, 'Y', 'I')
+            z_noise = np.where(z_noise_full[rnd] < pz, 'Z', 'I')
+
+            t1 = time.time()
+            o1, o2, o3 = o.Operator([2*self.dist, self.dist]), o.Operator([2*self.dist, self.dist]), o.Operator([2*self.dist, self.dist])
             o1.ops = x_noise
-            o2.ops = z_noise
-            state = state * o1 * o2
+            o2.ops = y_noise
+            o3.ops = z_noise
+            
+            state = state * o1 * o2 * o3
+            self.times['mult_ops'].append(time.time() - t1)
 
             z_syndrome_t = np.zeros([self.dist, self.dist])
             x_syndrome_t = np.zeros([self.dist, self.dist])
+            t1 = time.time()
             for i in range(self.dist):
                 for j in range(self.dist):
                     bit = self.meas_stab_z(state, i, j)
                     z_syndrome_t[i, j] = bit
                     bit = self.meas_stab_x(state, i, j)
                     x_syndrome_t[i, j] = bit
+            self.times['measure_stabs'].append(time.time() - t1)
+            
+            x_syndrome_t = x_syndrome_t.astype(int) ^ (x_meas_noise_full[rnd] < pm)
+            z_syndrome_t = z_syndrome_t.astype(int) ^ (z_meas_noise_full[rnd] < pm)
 
             x_syndrome.append(x_syndrome_t)
             z_syndrome.append(z_syndrome_t)
+        self.times['get_synd'].append(time.time() - t)
 
-            # TODO: add measurement errors
-
+        t = time.time()
         x_detections, z_detections = d.detect_changes(x_syndrome), d.detect_changes(z_syndrome)
+        self.times['det_conv'].append(time.time() - t)
 
-        matches = d.match_errors(matching_graph, np.array([x_detections, z_detections]))
-        
+        t = time.time()
+        try:
+            matches = d.match_errors(matching_graph, np.array([x_detections, z_detections]))
+        except Exception as e:
+            print('Z\n', x_detections, '\n\nX \n' ,z_detections, '\n\n')
+            print(x_meas_noise_full)
+            raise e
+        self.times['matching'].append(time.time() - t)
+
+        t = time.time()
         predicted_errors = to.extract_toric_predicted_errors(matches, self.dist, rounds)
-
+        self.times['pred_error'].append(time.time() - t)
+        
         if self.verbose:
             print('Z\n', x_detections, '\n\nX \n' ,z_detections, '\n\n')
             print(matches)
@@ -118,7 +176,36 @@ class ToricCode(Code):
             for i in range(3):
                 print('  ',predicted_errors[1][2*i],'\n',  predicted_errors[1][2*i + 1])
 
+        t = time.time()
         error = self.check_error(state, predicted_errors)
+        self.times['check_error'].append(time.time() - t)
+
+        # Checking if outside Normalizer
+        # TODO: Move to check_error
+        # TODO: differentiate between logical error and outside code space
+        def meas_error(dist, state, i, j):
+            relevant_data_bits = [
+                state[2*i, j],
+                state[2*i, (j-1)%dist],
+                state[(2*i+1)%(2*dist), j],
+                state[(2*i-1) % (2*dist), j],
+                ]
+
+            parity = sum(relevant_data_bits) % 4
+
+            return parity, relevant_data_bits
+
+        true_errors_x = np.isin(state.ops, ['Y', 'X'])
+        x_errors = predicted_errors[0]
+
+        tog = x_errors ^ true_errors_x
+        # print(tog, x_errors, true_errors_x)
+
+        for i1 in range(self.dist):
+            for j1 in range(self.dist):
+                r = meas_error(self.dist, tog, i1, j1)
+                if r[0] == 1:
+                    return (1, 0, 0), state, predicted_errors
 
         return error, state, predicted_errors
 

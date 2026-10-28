@@ -32,6 +32,7 @@ class NineQubitRepititionCode(Code):
             rounds: int,
             shots: int,
             px: float,
+            py: float,
             pz: float,
             pm: float,
     ):
@@ -43,7 +44,7 @@ class NineQubitRepititionCode(Code):
         result = 0
         for _ in range(shots):
             
-            shot_result = self.run_shot(rounds, px, pz, pm)
+            shot_result = self.run_shot(rounds, px, py, pz, pm)
             result += shot_result
 
         return result/shots
@@ -53,6 +54,7 @@ class NineQubitRepititionCode(Code):
             self,
             rounds: int,
             px: float,
+            py: float,
             pz: float,
             pm: float,
     ):
@@ -69,13 +71,12 @@ class NineQubitRepititionCode(Code):
 
             # ERRORS 
             x_errors = self.rng.random(9) < px
+            y_errors = self.rng.random(9) < py
             z_errors = self.rng.random(9) < pz
-            x_indices, z_indices = [idx for idx, i in enumerate(x_errors) if i], [idx for idx, i in enumerate(z_errors) if i]
+            x_indices, z_indices = [idx for idx, i in enumerate(x_errors ^ y_errors) if i], [idx for idx, i in enumerate(z_errors ^ y_errors) if i]
             
             state = state * o.X(9, x_indices)
-            # print(state, o.Z(9, z_indices))
             state = state * o.Z(9, z_indices)
-            # print(state)
             
             true_phys_error['X'][x_indices] += 1
             true_phys_error['Z'][z_indices] += 1
