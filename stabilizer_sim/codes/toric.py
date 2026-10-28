@@ -180,32 +180,7 @@ class ToricCode(Code):
         error = self.check_error(state, predicted_errors)
         self.times['check_error'].append(time.time() - t)
 
-        # Checking if outside Normalizer
-        # TODO: Move to check_error
-        # TODO: differentiate between logical error and outside code space
-        def meas_error(dist, state, i, j):
-            relevant_data_bits = [
-                state[2*i, j],
-                state[2*i, (j-1)%dist],
-                state[(2*i+1)%(2*dist), j],
-                state[(2*i-1) % (2*dist), j],
-                ]
-
-            parity = sum(relevant_data_bits) % 4
-
-            return parity, relevant_data_bits
-
-        true_errors_x = np.isin(state.ops, ['Y', 'X'])
-        x_errors = predicted_errors[0]
-
-        tog = x_errors ^ true_errors_x
-        # print(tog, x_errors, true_errors_x)
-
-        for i1 in range(self.dist):
-            for j1 in range(self.dist):
-                r = meas_error(self.dist, tog, i1, j1)
-                if r[0] == 1:
-                    return (1, 0, 0), state, predicted_errors
+      
 
         return error, state, predicted_errors
 
@@ -232,6 +207,52 @@ class ToricCode(Code):
 
         combined_x = np.array(x_errors ^ true_errors_x)
 
+        # Checking if outside Normalizer
+        # TODO: differentiate between logical error and outside code space
+        def meas_error_x(dist, state, i, j):
+            relevant_data_bits = [
+                state[2*i, j],
+                state[2*i, (j-1)%dist],
+                state[(2*i+1)%(2*dist), j],
+                state[(2*i-1) % (2*dist), j],
+                ]
+
+            parity = sum(relevant_data_bits) % 4
+
+            return parity, relevant_data_bits
+        
+        for i1 in range(self.dist):
+            for j1 in range(self.dist):
+                r = meas_error_x(self.dist, combined_x, i1, j1)
+                if r[0] == 1:
+                    return 2, [], []
+
+
+        true_errors_z = np.isin(final_state.ops, ['Y', 'Z'])
+        z_errors = predicted_errors[1]
+
+        combined_z = np.array(z_errors ^ true_errors_z)
+
+        # Checking if outside Normalizer
+        # TODO: differentiate between logical error and outside code space
+        def meas_error_z(dist, state, i, j):
+            relevant_data_bits = [
+                state[(2*i+1)%(2*dist), j],
+                state[(2*i+1)%(2*dist), (j+1)%dist],
+                state[2*i, j],
+                state[(2*i+2) % (2*dist), j],
+                ]
+
+            parity = sum(relevant_data_bits) % 4
+
+            return parity, relevant_data_bits
+        
+        for i in range(self.dist):
+            for j in range(self.dist):
+                r = meas_error_z(self.dist, combined_z, i, j)
+                if r[0] == 1:
+                    return 2, [], []
+
         errors_x = [0, 0]
 
         # Checking one row
@@ -246,11 +267,6 @@ class ToricCode(Code):
             is_error = 1
 
         # Doing similar on dual graph (rows <-> columns)
-        true_errors_z = np.isin(final_state.ops, ['Y', 'Z'])
-        z_errors = predicted_errors[1]
-
-        combined_z = np.array(z_errors ^ true_errors_z)
-
         errors_z = [0, 0]
         if sum(combined_z[0, :]) % 2 == 1:
             errors_z[0] = 1

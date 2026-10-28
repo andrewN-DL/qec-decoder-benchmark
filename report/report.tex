@@ -146,9 +146,18 @@ We can define the multiplication relations ($P^2 = I, XZ = Y,$ etc). In practice
 Every round we measure stabilizers by finding commutation relation between the data qubits and the stabilizers, storing it in an ancilla qubit as -1 if anticommutes, and as +1 is commutes
 This gives us the syndrome (where $-1 \rightarrow 1$, and $1 \rightarrow 0$)
 
+\subsection{Validation}
+Validated on threshold of toric code
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+
 \section{Noise Models}
 
-We are initially treating each qubit as an independent channel, using \textbf{X} and \textbf{Z} errors. \textbf{Y} errors to be considered int he future (to make fully depolarizing noise Pauli channel)
+We are initially treating each qubit as an independent channel, using \textbf{X}, \textbf{Y}, and \textbf{Z} errors (fully depolarizing noise Pauli channel).
+Added measurement errors for all syndrome bits
+
+For the toric code, these measurements can take the resulting state outside the normaliser of the stabilizer group. This means that it is neither a logical error or a valid state
+
+Aim is to add circuit level noise
 
 
 \section{Decoding}
