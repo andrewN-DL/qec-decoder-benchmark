@@ -70,23 +70,25 @@ class ToricCode(Code):
             'measure_stabs': []
         }
 
-        result = 0
+        result = {
+            'no_error': 0,
+            'logical': 0,
+            'outside': 0
+        }
         for _ in range(shots):
             st = time.time()
             shot_res = self.run_round(rounds, px, py, pz, pm, matching_graph)
-            result += shot_res[0][0]
+            result[shot_res[0][0]] += 1
             self.times['shot'].append(time.time() - st)
-
 
         # for k, v in self.times.items():
         #     print(k, np.mean(v))
-
 
         # Return last error/prediction
         if show_errors:
             return shot_res 
 
-        return result/shots
+        return {k: v/shots for k, v in result.items()}
 
     def run_round(
         self,
@@ -98,7 +100,6 @@ class ToricCode(Code):
         matching_graph
     ):
 
-        
         state = self.initial_state.copy()
         
         x_syndrome = []
@@ -225,7 +226,7 @@ class ToricCode(Code):
             for j1 in range(self.dist):
                 r = meas_error_x(self.dist, combined_x, i1, j1)
                 if r[0] == 1:
-                    return 2, [], []
+                    return 'outside', [], []
 
 
         true_errors_z = np.isin(final_state.ops, ['Y', 'Z'])
@@ -251,7 +252,7 @@ class ToricCode(Code):
             for j in range(self.dist):
                 r = meas_error_z(self.dist, combined_z, i, j)
                 if r[0] == 1:
-                    return 2, [], []
+                    return 'outside', [], []
 
         errors_x = [0, 0]
 
@@ -277,5 +278,7 @@ class ToricCode(Code):
             errors_z[1] = 1
             is_error = 1
 
+        if is_error:
+            return 'logical', errors_x, errors_z
 
-        return is_error, errors_x, errors_z
+        return 'no_error', errors_x, errors_z

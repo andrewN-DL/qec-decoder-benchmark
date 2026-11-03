@@ -1,8 +1,11 @@
 \documentclass[a4paper,12pt]{article}
 \usepackage[margin=1in]{geometry}
 \usepackage{graphicx}
+\usepackage{float}
 \usepackage{hyperref}
 \usepackage{braket}
+
+\graphicspath{ {../figs/} }
 
 \title{Quantum Error Correction Decoder Benchmark}
 \author{Andrew Nestor}
@@ -13,16 +16,24 @@
 \maketitle
 
 \begin{abstract}
-Investigating QEC
+A project that simulates QECCs, investigating noise modesl associated with them.
+
 \end{abstract}
 
 \section{Introduction}
 
-This project focused on building a QEC system, starting with a state based simulation of the 3 qubit repitition code
+This project focused on building a simulator to investigete quantum error correcting codes (QECC). It starts by simulating memory qubits.
+I initially start by building the simulator itself. Though there are many established libraries which can already achieve this, the exercise of building one myself presented a strong learning opportunity.
+I simulate using two techniques. First, I built a model that tracks teh state vector of the system. Gates were modelled as matrices and measurements collapsed the state.
+Naturally, this is not the most effecient way to generate syndrome data and run quantum circuits. Even simulating codes beyond the 3bit repitition code proved inefficient.
+
+The second component abstracts away the state, focusing only on the errors applied to each qubit and how they interact with stabilizers. This allowed me to simulate more realistic QECCs, and investigate their behaviours.
+
+The simulators built in this project are not intended to be a replacemnet for well established tools, but served as learning tools as they were developed.
 
 \section{Background}
 
-This project focused on stabilizer codes.
+I will give an introduction to the main concepts 
 
 \subsection{Quantum Error Correcting Codes}
 \subsection{Stabilizer Codes}
@@ -54,13 +65,12 @@ We can measure the eigenvalues of each stabilizer on the state. If any of them r
 
 In practice, we usually use \textbf{CNOT} operators to measure, potentially with basis changes before and after, to perform these parity checks.
 
-Practically this creates a map 
+Practically this creates a map
 \begin{equation}
     \ket{\psi}\ket{0} \rightarrow \frac{1}{\sqrt{2}} (\ket{\psi}\ket{0} + S\ket{\psi}\ket{1})
 \end{equation}
 
 from which we measure the ancilla
-
 
 \subsection{Repitition Codes}
 \subsection{Topological Codes}
@@ -148,7 +158,7 @@ This gives us the syndrome (where $-1 \rightarrow 1$, and $1 \rightarrow 0$)
 
 \subsection{Validation}
 Validated on threshold of toric code
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+
 
 \section{Noise Models}
 
@@ -156,6 +166,7 @@ We are initially treating each qubit as an independent channel, using \textbf{X}
 Added measurement errors for all syndrome bits
 
 For the toric code, these measurements can take the resulting state outside the normaliser of the stabilizer group. This means that it is neither a logical error or a valid state
+Measurement errors seriously affected the performance of the toric code. Without these errors, larger distances resulted in fewer logical errors (below the threshold). When they were introduced, this behaviour was inverted
 
 Aim is to add circuit level noise
 
@@ -169,6 +180,29 @@ Could do a further majority vote
 \subsection{Machine Learning}
 
 \section{Results}
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{toric_d_depol_logic_error}
+    \caption{Logical error rate}
+    % \label{fig:mesh1}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{toric_d_depol_outside_code}
+    \caption{States that fell outside the code space (Due to measurement errors)}
+    % \label{fig:mesh1}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{toric_d_depol_combined}
+    \caption{Total rate for incorrect information}
+    % \label{fig:mesh1}
+\end{figure}
+
 
 \section{Conclusions and Future Work}
 
