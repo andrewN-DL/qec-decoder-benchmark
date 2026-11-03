@@ -1,8 +1,11 @@
 \documentclass[a4paper,12pt]{article}
 \usepackage[margin=1in]{geometry}
 \usepackage{graphicx}
+\usepackage{float}
 \usepackage{hyperref}
 \usepackage{braket}
+
+\graphicspath{ {../figs/} }
 
 \title{Quantum Error Correction Decoder Benchmark}
 \author{Andrew Nestor}
@@ -13,22 +16,30 @@
 \maketitle
 
 \begin{abstract}
-Investigating QEC
+A project that simulates QECCs, investigating noise modesl associated with them.
+
 \end{abstract}
 
 \section{Introduction}
 
-This project focused on building a QEC system, starting with a state based simulation of the 3 qubit repitition code
+This project focused on building a simulator to investigete quantum error correcting codes (QECC). It starts by simulating memory qubits.
+I initially start by building the simulator itself. Though there are many established libraries which can already achieve this, the exercise of building one myself presented a strong learning opportunity.
+I simulate using two techniques. First, I built a model that tracks teh state vector of the system. Gates were modelled as matrices and measurements collapsed the state.
+Naturally, this is not the most effecient way to generate syndrome data and run quantum circuits. Even simulating codes beyond the 3bit repitition code proved inefficient.
+
+The second component abstracts away the state, focusing only on the errors applied to each qubit and how they interact with stabilizers. This allowed me to simulate more realistic QECCs, and investigate their behaviours.
+
+The simulators built in this project are not intended to be a replacemnet for well established tools, but served as learning tools as they were developed.
 
 \section{Background}
 
-This project focused on stabilizer codes.
+I will give an introduction to the main concepts 
 
 \subsection{Quantum Error Correcting Codes}
 \subsection{Stabilizer Codes}
 For a given QECC $Q$, we can define its stabilizers as the set $S$
 \begin{equation}
-    {S_i | S_i\ket{\psi} = \ket{\psi} \forall \psi \in Q}
+    \{ S_i \; | \; S_i\ket{\psi} = \ket{\psi} \forall \psi \in Q \}
 \end{equation}
 
 This full set defines a group (stabilizer group). We will generally work with the generators of this group.
@@ -47,20 +58,19 @@ All single qubit Paulis either commute or anticommute.
 If the error commutes with the stabilizer, then this is equivilant to $ES_i\ket{\psi} = E\ket{\psi}$
 If the error does not commutes with the stabilizer, then this is equivilant to $ES_i\ket{\psi} = E\ket{\psi}$
 
-As products and of operators can be defined pointwise, this means that the commutator for two n-qubit operators of the form $P = P_1 \oplus \ldot  \oplus P_n$ is equal to the product of the commutators of the components
+As products and of operators can be defined pointwise, this means that the commutator for two n-qubit operators of the form $P = P_1 \oplus \dot  \oplus P_n$ is equal to the product of the commutators of the components
 Therefore if an odd number of anticommuting components the operators anticommute, otherwise they commute. This is often realised in stabilizers as parity check operators
 
 We can measure the eigenvalues of each stabilizer on the state. If any of them return -1, that indicates an error
 
 In practice, we usually use \textbf{CNOT} operators to measure, potentially with basis changes before and after, to perform these parity checks.
 
-Practically this creates a map 
+Practically this creates a map
 \begin{equation}
     \ket{\psi}\ket{0} \rightarrow \frac{1}{\sqrt{2}} (\ket{\psi}\ket{0} + S\ket{\psi}\ket{1})
 \end{equation}
 
 from which we measure the ancilla
-
 
 \subsection{Repitition Codes}
 \subsection{Topological Codes}
@@ -142,13 +152,23 @@ Start with $I(n)$. As the circuit progresses, we can add noise to each qubit.
 \subsection{Syndrome Extraction}
 Initially only considering Pauli errors. We kept track of a state. This was multiplied by an error when it occured
 Did not need to keep track of phase factors for individual operators as these multiply the whole operator and have no effect on commutators
-We can define the multiplication relations (P**2 = I, XZ = Y, etc). In practice, any two different non-identity Pauli operators do not commute
+We can define the multiplication relations ($P^2 = I, XZ = Y,$ etc). In practice, any two different non-identity Pauli operators do not commute
 Every round we measure stabilizers by finding commutation relation between the data qubits and the stabilizers, storing it in an ancilla qubit as -1 if anticommutes, and as +1 is commutes
-This gives us the syndrome (where -1 $\rightarrow$ 1, and 1 $\rightarrow$ 0)
+This gives us the syndrome (where $-1 \rightarrow 1$, and $1 \rightarrow 0$)
+
+\subsection{Validation}
+Validated on threshold of toric code
+
 
 \section{Noise Models}
 
-We are initially treating each qubit as an independent channel, using \textbf{X} and \textbf{Z} errors. \textbf{Y} errors to be considered int he future (to make fully depolarizing noise Pauli channel)
+We are initially treating each qubit as an independent channel, using \textbf{X}, \textbf{Y}, and \textbf{Z} errors (fully depolarizing noise Pauli channel).
+Added measurement errors for all syndrome bits
+
+For the toric code, these measurements can take the resulting state outside the normaliser of the stabilizer group. This means that it is neither a logical error or a valid state
+Measurement errors seriously affected the performance of the toric code. Without these errors, larger distances resulted in fewer logical errors (below the threshold). When they were introduced, this behaviour was inverted
+
+Aim is to add circuit level noise
 
 
 \section{Decoding}
@@ -160,6 +180,29 @@ Could do a further majority vote
 \subsection{Machine Learning}
 
 \section{Results}
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{toric_d_depol_logic_error}
+    \caption{Logical error rate}
+    % \label{fig:mesh1}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{toric_d_depol_outside_code}
+    \caption{States that fell outside the code space (Due to measurement errors)}
+    % \label{fig:mesh1}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{toric_d_depol_combined}
+    \caption{Total rate for incorrect information}
+    % \label{fig:mesh1}
+\end{figure}
+
 
 \section{Conclusions and Future Work}
 
@@ -175,15 +218,8 @@ Could do a further majority vote
 For surface code
 Maybe dont even need an initial state? Maybe don't need to measure stabilizers.
 Can just directly add noise and generate what that would look like in the detectors/syndrome.
-Generate blank syndrome. // 
+Generate blank syndrome.
 
-[[0, 0, 0,]] //
-[[0, 0, 0,]]//
-[[0, 0, 0,]]//
-
-[[1, 1, 0,]] //
-[[0, 0, 1,]] //
-[[0, 0, 1,]]//
 
 
 

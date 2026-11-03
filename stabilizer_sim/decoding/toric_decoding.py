@@ -17,11 +17,11 @@ def build_toric_matching_graph(distance, rounds, px, pz, pm):
     num_detectors_z = (rounds) * (distance**2)
 
     if px == 0:
-        px = 1e-6
+        px = 1e-9
     if pz == 0:
-        pz = 1e-6
+        pz = 1e-9
     if pm == 0:
-        pm = 1e-6
+        pm = 1e-9
     
     weightx = -np.log(px/(1-px))
     weightz = -np.log(pz/(1-pz))
@@ -71,6 +71,16 @@ def build_toric_matching_graph(distance, rounds, px, pz, pm):
                     (num_z_stabilizers*(r+1))+s+num_detectors_z,
                     weight=weightm
                 )
+        else:
+            matching.add_boundary_edge(
+                (num_z_stabilizers*r)+s,
+                weight=weightm
+            )
+
+            matching.add_boundary_edge(
+                (num_z_stabilizers*r)+s+num_detectors_z,
+                weight=weightm
+            )
 
     return matching
 
@@ -152,6 +162,11 @@ def extract_toric_predicted_errors(matched_errors, distance, rounds):
         return ((b - a + d // 2) % d) - d // 2
 
     for u, v in matched_errors:
+
+        # Continue if match with temporal boundary
+        if -1 in matched_errors:
+            continue
+
         u, v = int(u), int(v)
         assert (u < n_z_det) == (v < n_z_det), 'X and Z errors matched'
 
@@ -161,6 +176,11 @@ def extract_toric_predicted_errors(matched_errors, distance, rounds):
             v -= n_z_det
 
         s1, s2 = u % n_stab, v % n_stab
+
+        # Continue if purely temporal
+        if s1 == s2:
+            continue
+
         i1, j1 = divmod(s1, d)
         i2, j2 = divmod(s2, d)
 
