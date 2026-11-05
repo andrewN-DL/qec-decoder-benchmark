@@ -55,7 +55,7 @@ class ToricCode(Code):
             show_errors=False,
     ):
 
-        matching_graph = to.build_toric_matching_graph(self.dist, rounds, px, pz, pm)
+        matching_graph = to.build_toric_matching_graph(self.dist, rounds, px, py, pz, pm)
 
         # Checking which part of the process is slowing down the run
         self.times = {
