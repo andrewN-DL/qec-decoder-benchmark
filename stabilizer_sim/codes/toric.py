@@ -75,6 +75,7 @@ class ToricCode(Code):
             'logical': 0,
             'outside': 0
         }
+
         for _ in range(shots):
             st = time.time()
             shot_res = self.run_round(rounds, px, py, pz, pm, matching_graph)
@@ -117,37 +118,34 @@ class ToricCode(Code):
 
         t = time.time()
 
+
+        op_dim = [2* self.dist, self.dist]
         for rnd in range(rounds):
 
-            x_noise = np.where(x_noise_full[rnd] < px, 'X', 'I')
-            y_noise = np.where(y_noise_full[rnd] < py, 'Y', 'I')
-            z_noise = np.where(z_noise_full[rnd] < pz, 'Z', 'I')
+            x_noise = np.argwhere(x_noise_full[rnd] < px)
+            y_noise = np.argwhere(y_noise_full[rnd] < py)
+            z_noise = np.argwhere(z_noise_full[rnd] < pz)
 
             t1 = time.time()
-            o1, o2, o3 = o.Operator([2*self.dist, self.dist]), o.Operator([2*self.dist, self.dist]), o.Operator([2*self.dist, self.dist])
-            o1.ops = x_noise
-            o2.ops = y_noise
-            o3.ops = z_noise
+            o1, o2, o3 = o.X(op_dim, x_noise), o.Y(op_dim, y_noise), o.Z(op_dim, z_noise)
             
             state = state * o1 * o2 * o3
             self.times['mult_ops'].append(time.time() - t1)
 
-            z_syndrome_t = np.zeros([self.dist, self.dist])
-            x_syndrome_t = np.zeros([self.dist, self.dist])
-            t1 = time.time()
-            for i in range(self.dist):
-                for j in range(self.dist):
-                    bit = self.meas_stab_z(state, i, j)
-                    z_syndrome_t[i, j] = bit
-                    bit = self.meas_stab_x(state, i, j)
-                    x_syndrome_t[i, j] = bit
-            self.times['measure_stabs'].append(time.time() - t1)
+            z_syndrome_t, x_syndrome_t = self.syndromes(state.ex, state.ez)
             
             x_syndrome_t = x_syndrome_t.astype(int) ^ (x_meas_noise_full[rnd] < pm)
             z_syndrome_t = z_syndrome_t.astype(int) ^ (z_meas_noise_full[rnd] < pm)
 
             x_syndrome.append(x_syndrome_t)
             z_syndrome.append(z_syndrome_t)
+
+
+        z_syndrome_t, x_syndrome_t = self.syndromes(state.ex, state.ez)
+
+        x_syndrome.append(x_syndrome_t.astype(int))
+        z_syndrome.append(z_syndrome_t.astype(int))
+
         self.times['get_synd'].append(time.time() - t)
 
         t = time.time()
@@ -178,16 +176,26 @@ class ToricCode(Code):
                 print('  ',predicted_errors[1][2*i],'\n',  predicted_errors[1][2*i + 1])
 
         t = time.time()
-        error = self.check_error(state, predicted_errors)
+        error = self.check_error(state.ex, state.ez, predicted_errors)
         self.times['check_error'].append(time.time() - t)
-
-      
 
         return error, state, predicted_errors
 
+    def syndromes(self, ex, ez):
+        # Z-error array -> your "face" check (meas_stab_z)
+        hz, vz = ez[0::2], ez[1::2]          # hz[i,j]=ez[2i,j], vz[i,j]=ez[2i+1,j]
+        syn_face = hz ^ vz ^ np.roll(vz, -1, axis=1) ^ np.roll(hz, -1, axis=0)
+
+        # X-error array -> your "vertex" check (meas_stab_x)
+        hx, vx = ex[0::2], ex[1::2]
+        syn_vert = hx ^ np.roll(hx, 1, axis=1) ^ vx ^ np.roll(vx, 1, axis=0)
+        return syn_face, syn_vert
+    
+
     def check_error(
             self,
-            final_state,
+            true_x_errors,
+            true_z_errors,
             predicted_errors
     ):
 
@@ -203,10 +211,8 @@ class ToricCode(Code):
         '''
         is_error = 0
 
-        true_errors_x = np.isin(final_state.ops, ['Y', 'X'])
         x_errors = predicted_errors[0]
-
-        combined_x = np.array(x_errors ^ true_errors_x)
+        combined_x = np.array(x_errors ^ true_x_errors)
 
         # Checking if outside Normalizer
         # TODO: differentiate between logical error and outside code space
@@ -218,7 +224,7 @@ class ToricCode(Code):
                 state[(2*i-1) % (2*dist), j],
                 ]
 
-            parity = sum(relevant_data_bits) % 4
+            parity = sum(relevant_data_bits) % 2
 
             return parity, relevant_data_bits
         
@@ -228,11 +234,8 @@ class ToricCode(Code):
                 if r[0] == 1:
                     return 'outside', [], []
 
-
-        true_errors_z = np.isin(final_state.ops, ['Y', 'Z'])
         z_errors = predicted_errors[1]
-
-        combined_z = np.array(z_errors ^ true_errors_z)
+        combined_z = np.array(z_errors ^ true_z_errors)
 
         # Checking if outside Normalizer
         # TODO: differentiate between logical error and outside code space
@@ -244,7 +247,7 @@ class ToricCode(Code):
                 state[(2*i+2) % (2*dist), j],
                 ]
 
-            parity = sum(relevant_data_bits) % 4
+            parity = sum(relevant_data_bits) % 2
 
             return parity, relevant_data_bits
         

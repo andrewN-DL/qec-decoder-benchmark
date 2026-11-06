@@ -10,6 +10,9 @@ def build_toric_matching_graph(distance, rounds, px, py, pz, pm):
     """
     matching = Matching()
 
+    # To add final noiseless layer -> classical extraction
+    rounds += 1
+
     # Not omitting final 2 stabilizers for now as easier (although not independent)
     num_z_stabilizers = distance**2
 
@@ -74,89 +77,15 @@ def build_toric_matching_graph(distance, rounds, px, py, pz, pm):
                     (num_z_stabilizers*(r+1))+s+num_detectors_z,
                     weight=weightm
                 )
-        else:
-            for s in range(distance**2):
-                matching.add_boundary_edge(
-                    (num_z_stabilizers*r)+s,
-                    weight=weightm
-                )
-
-                matching.add_boundary_edge(
-                    (num_z_stabilizers*r)+s+num_detectors_z,
-                    weight=weightm
-                )
 
     return matching
 
-
-# def extract_toric_predicted_errors(matched_errors, distance, rounds):
-#     num_z_stabilizers = distance ** 2
-#     num_z_detectors = rounds * num_z_stabilizers
-
-#     x_errors = np.zeros([2*distance, distance])
-#     z_errors = np.zeros([2*distance, distance])
-
-#     for match in matched_errors:
-
-#         assert (match[0] < num_z_detectors) == (match[1] < num_z_detectors), 'X and Z errors matched'
-
-#         if match[0] < num_z_detectors:
-#             error_type = 0
-#         else:
-#             error_type = 1
-#             match = [match[0] - num_z_detectors, match[1] - num_z_detectors]
-
-#         match = sorted(match)
-
-#         s1, t1 = match[0] % num_z_stabilizers, match[0] // num_z_stabilizers
-#         s2, t2 = match[1] % num_z_stabilizers, match[1] // num_z_stabilizers
-
-#         # [43, 44] -> [7, 8] -> [2, 1], [2, 2]
-#         # [44, 47] -> [8, 2] -> [2, 2], [0, 2]
-#         i1, j1 = s1 // distance, s1 % distance
-#         i2, j2 = s2 // distance, s2 % distance
-
-#         print('Error Type', error_type)
-#         print(i1, j1)
-#         print(i2, j2, 'Two')
-
-#         # v_x_errors = min(((i1-i2) % distance), ((i2-i1) % distance))
-#         v_x_errors = i2 - i1
-#         h_x_errors = j2 - j1
-
-#         print('dist', v_x_errors, h_x_errors)
-
-#         if ((i2-i1) // distance) < (distance / 2):
-#             v_start = i1
-#             v_end = i2
-#         else:
-#             v_start = i2
-#             v_end = i1
-
-#         for er in range(v_x_errors):
-#             if error_type == 0: 
-#                 x_errors[2*(v_start + er) % (2 * distance), j1] += 1
-#             else:
-#                 z_errors[((2*(v_start) + er) + 1) % (distance * 2), j2] += 1
-
-#         if ((j2-j1) % distance) < (distance / 2): 
-#             h_start = j1
-#         else:
-#             h_start = j2
-
-#         for er in range(h_x_errors):
-#             if error_type == 0:
-#                 x_errors[2*(v_end) + 1, (h_start + (er)) % distance] += 1
-#             else:
-#                 z_errors[2*((v_end)), (h_start + er) % distance] += 1
-
-#     return x_errors % 2, z_errors % 2
 
 # NOTE: This currently assumes all data qubits have the same noise model -> Shortest path = minimum weight
 def extract_toric_predicted_errors(matched_errors, distance, rounds):
     d = distance
     n_stab = d * d
-    n_z_det = rounds * n_stab
+    n_z_det = (rounds + 1) * n_stab
 
     x_errors = np.zeros((2*d, d), dtype=np.uint8)
     z_errors = np.zeros((2*d, d), dtype=np.uint8)
@@ -192,34 +121,24 @@ def extract_toric_predicted_errors(matched_errors, distance, rounds):
         dv = signed_step(i1, i2)
         step = 1 if dv > 0 else -1
         i = i1
-
         for _ in range(abs(dv)):
             k = i if step > 0 else (i - 1) % d
-
             if is_x:
-                # X error: shared qubit of neighbouring Z stabilisers
-                x_errors[2*((k + 1) % d), j1] ^= 1
+                x_errors[2*k + 1, j1] ^= 1
             else:
-                # Z error: shared qubit of neighbouring X stabilisers
-                z_errors[2*k + 1, j1] ^= 1
-
+                z_errors[2*((k + 1) % d), j1] ^= 1
             i = (i + step) % d
 
         # horizontal leg: row i2, from column j1 to column j2
         dh = signed_step(j1, j2)
         step = 1 if dh > 0 else -1
         j = j1
-
         for _ in range(abs(dh)):
             k = j if step > 0 else (j - 1) % d
-
             if is_x:
-                # X error: shared qubit of neighbouring Z stabilisers
-                x_errors[2*i2 + 1, (k + 1) % d] ^= 1
+                x_errors[2*i2, k] ^= 1
             else:
-                # Z error: shared qubit of neighbouring X stabilisers
-                z_errors[2*i2, k] ^= 1
-
+                z_errors[2*i2 + 1, (k + 1) % d] ^= 1
             j = (j + step) % d
 
     return x_errors, z_errors
