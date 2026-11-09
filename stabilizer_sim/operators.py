@@ -15,48 +15,39 @@ class Operator:
             raise TypeError('dim must be of type int, list, or np.ndarray. received type', type(dim))
 
         # TODO: Currently no H and no phase
-        self.rels = {
-            ('X', 'Z'): 'Y',
-            ('Z', 'X'): 'Y',
-            ('X', 'Y'): 'Z',
-            ('Y', 'X'): 'Z',
-            ('Y', 'Z'): 'X',
-            ('Z', 'Y'): 'X',
-        }
+        # self.rels = {
+        #     ('X', 'Z'): 'Y',
+        #     ('Z', 'X'): 'Y',
+        #     ('X', 'Y'): 'Z',
+        #     ('Y', 'X'): 'Z',
+        #     ('Y', 'Z'): 'X',
+        #     ('Z', 'Y'): 'X',
+        # }
 
-        self.ops = np.full(self.dim, 'I', dtype=str)
+        self.ex = np.zeros(self.dim, dtype=np.uint8)
+        self.ez = np.zeros(self.dim, dtype=np.uint8)
 
     def __getitem__(self, idx: int):
-        return self.ops[idx]
+        return self.ex[idx], self.ez[idx]
 
     def __repr__(self):
-        return str(self.ops)
+        return str('X', self.ex, 'Z', self.ez)
 
     def __mul__(self, other):
 
-    #     assert isinstance(self.ops, np.ndarray) and isinstance(other.ops, np.ndarray), \
-    # (type(self.ops), type(other.ops))
-        
-        a, b = self.ops, other.ops
-        out = np.full(a.shape, 'I', dtype=str)
+        #     assert isinstance(self.ops, np.ndarray) and isinstance(other.ops, np.ndarray), \
+        # (type(self.ops), type(other.ops))
 
-        a_id, b_id = (a == 'I'), (b == 'I')
-        same = (a == b)
-
-        out[a_id & ~b_id] = b[a_id & ~b_id]      # a is I, take b
-        out[b_id & ~a_id] = a[b_id & ~a_id]      # b is I, take a
-
-        rest = ~(a_id | b_id | same)             # both non-I and different
-        out[rest] = [self.rels[(x, y)] for x, y in zip(a[rest], b[rest])]
+        outx = self.ex ^ other.ex
+        outz = self.ex ^ other.ez
 
         new = Operator(self.dim)
-        new.ops = out
+        new.ex, new.ez = outx, outz
         return new
 
     def copy(self):
-
         new = Operator(self.dim)
-        new.ops = self.ops
+        new.ex, new.ez = self.ex, self.ez
 
         return new
 
@@ -68,13 +59,15 @@ class _Single(Operator):
         super().__init__(dim)
         pos = np.asarray(positions, dtype=int)
         if pos.size == 0:
-            return 
+            return
         if self.rank == 1:
-            self.ops[pos.ravel()] = self.label
+            self.ez[pos.ravel()], self.ex[pos.ravel()] = self.label[0], self.label[1]
         else:
-            self.ops[tuple(np.atleast_2d(pos).T)] = self.label
+            idx = tuple(np.atleast_2d(pos).T)
+            self.ez[idx], self.ex[idx] = self.label[0], self.label[1]
 
-class X(_Single): label = 'X'
-class Y(_Single): label = 'Y'
-class Z(_Single): label = 'Z'
-class H(_Single): label = 'H'
+
+class X(_Single): label = [0, 1]
+class Y(_Single): label = [1, 1]
+class Z(_Single): label = [1, 0]
+# class H(_Single): label = 'H'
