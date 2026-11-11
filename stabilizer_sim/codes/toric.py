@@ -15,34 +15,6 @@ class ToricCode(Code):
         self.dist = dist
         self.initial_state = o.Operator([2*self.dist, self.dist])
 
-
-    def meas_stab_z(self, state, i, j):
-        # Face operator (Z1 Z2 Z3 Z4)
-        relevant_data_bits = [
-            state[2*i, j],
-            state[2*i+1, j],
-            state[2*i+1, (j+1) % self.dist],
-            state[(2*i+2) % (2*self.dist), j],
-            ]
-
-        parity = sum([1 for el in relevant_data_bits if el not in ['I', 'X']]) % 2
-
-        return parity
-    
-
-    def meas_stab_x(self, state, i, j):
-        # Vertex operator (X1 X2 X3 X4)
-        relevant_data_bits = [
-            state[(2*i-1) % (2*self.dist), j],
-            state[2*i, (j-1) % self.dist],
-            state[2*i, j],
-            state[2*i+1, j],
-            ]
-        
-        parity = sum([1 for el in relevant_data_bits if el not in ['I', 'Z']]) % 2
-        
-        return parity
-
     # TODO: This can prob go in Code class
     def run(
             self,
@@ -182,11 +154,11 @@ class ToricCode(Code):
         return error, state, predicted_errors
 
     def syndromes(self, ex, ez):
-        # Z-error array -> your "face" check (meas_stab_z)
-        hz, vz = ez[0::2], ez[1::2]          # hz[i,j]=ez[2i,j], vz[i,j]=ez[2i+1,j]
+        # Z-error array
+        hz, vz = ez[0::2], ez[1::2]          
         syn_face = hz ^ vz ^ np.roll(vz, -1, axis=1) ^ np.roll(hz, -1, axis=0)
 
-        # X-error array -> your "vertex" check (meas_stab_x)
+        # X-error array
         hx, vx = ex[0::2], ex[1::2]
         syn_vert = hx ^ np.roll(hx, 1, axis=1) ^ vx ^ np.roll(vx, 1, axis=0)
         return syn_face, syn_vert
