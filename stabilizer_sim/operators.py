@@ -14,16 +14,6 @@ class Operator:
         else:
             raise TypeError('dim must be of type int, list, or np.ndarray. received type', type(dim))
 
-        # TODO: Currently no H and no phase
-        # self.rels = {
-        #     ('X', 'Z'): 'Y',
-        #     ('Z', 'X'): 'Y',
-        #     ('X', 'Y'): 'Z',
-        #     ('Y', 'X'): 'Z',
-        #     ('Y', 'Z'): 'X',
-        #     ('Z', 'Y'): 'X',
-        # }
-
         self.ex = np.zeros(self.dim, dtype=np.uint8)
         self.ez = np.zeros(self.dim, dtype=np.uint8)
 
@@ -31,7 +21,7 @@ class Operator:
         return self.ex[idx], self.ez[idx]
 
     def __repr__(self):
-        return str('X', self.ex, 'Z', self.ez)
+        return 'X: ' +  str(self.ex) + 'Z: ' + str(self.ez)
 
     def __mul__(self, other):
 
@@ -39,7 +29,7 @@ class Operator:
         # (type(self.ops), type(other.ops))
 
         outx = self.ex ^ other.ex
-        outz = self.ex ^ other.ez
+        outz = self.ez ^ other.ez
 
         new = Operator(self.dim)
         new.ex, new.ez = outx, outz
