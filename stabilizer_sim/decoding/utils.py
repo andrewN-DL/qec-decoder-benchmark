@@ -13,8 +13,8 @@ def detect_changes(syndrome: list) -> list:
 
 
 def match_errors(matching_graph: Matching, detection_events) -> list:
-
-    matched = matching_graph.decode_to_matched_dets_array(detection_events.flatten())
+    #TODO: makwe sure working for toric
+    matched = matching_graph.decode_to_matched_dets_array(np.concat([e.flatten() for e in detection_events]))
 
     return matched
 

@@ -126,6 +126,7 @@ class ToricCode(Code):
 
         t = time.time()
         try:
+            print(np.array([x_detections, z_detections]).flatten(), type(np.array([x_detections, z_detections]).flatten()))
             matches = d.match_errors(matching_graph, np.array([x_detections, z_detections]))
         except Exception as e:
             print('Z\n', x_detections, '\n\nX \n' ,z_detections, '\n\n')

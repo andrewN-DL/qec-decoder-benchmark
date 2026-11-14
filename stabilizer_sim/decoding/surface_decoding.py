@@ -14,10 +14,11 @@ def build_toric_matching_graph(distance, rounds, px, py, pz, pm):
     rounds += 1
 
     # Face + Vertex
-    num_face_stabilizers = (distance * distance + 2) + (distance + 1)**2
+    num_face_stabilizers = (distance * (distance + 2))
+    num_vert_stabilizers = (distance + 1)**2
 
     # d**2 spatial and temporal for all rounds. No temporal on last
-    num_detectors_z = (rounds) * num_face_stabilizers
+    num_detectors_face = (rounds) * num_face_stabilizers
 
     if px == 0:
         px = 1e-9
@@ -35,6 +36,74 @@ def build_toric_matching_graph(distance, rounds, px, py, pz, pm):
 
     # Face operator boundaries along smooth edges
     # Vertex operator boundaries along rough edges
+
+    h_dist_face = distance + 2
+    v_dist_face = distance
+
+    h_dist_vert = distance + 1
+    v_dist_vert = distance + 1
+
+    print(rounds)
+
+    for r in range(rounds):
+        # Face operators
+        for vd in range(v_dist_face):
+            for hd in range(h_dist_face):
+                # Adding horizontal face edges
+                print(r, vd, hd)
+                if hd < h_dist_face - 1:
+                    org = r*num_face_stabilizers + vd*h_dist_face + hd
+                    dest = org + 1
+                    # print('A', org, dest)
+                    matching.add_edge(org, dest, weight=weightx)
+                if vd < v_dist_face - 1:
+                    org = r*num_face_stabilizers + vd*h_dist_face + hd
+                    dest = org + h_dist_face
+                    # print('B', org, dest)
+                    matching.add_edge(org, dest, weight=weightx)
+                if vd in [0, v_dist_face - 1]:
+                    # print('BF', r*num_face_stabilizers + vd*h_dist_face + hd)
+                    matching.add_boundary_edge(r*num_face_stabilizers + vd*h_dist_face + hd)
+        # print('Enter Vert')
+        for vd in range(v_dist_vert):
+            for hd in range(h_dist_vert):
+                print(r, vd, hd)
+                # Adding horizontal face edges
+                if hd < h_dist_vert - 1:
+                    org = r*num_vert_stabilizers + vd*h_dist_vert + hd + num_detectors_face
+                    dest = org + 1
+                    # print('C', org, dest)
+                    matching.add_edge(org, dest, weight=weightx)
+                if vd < v_dist_vert - 1:
+                    org = r*num_vert_stabilizers + vd*h_dist_vert + hd + num_detectors_face
+                    dest = org + h_dist_vert
+                    # print('D', org, dest)
+                    matching.add_edge(org, dest, weight=weightx)
+                if hd in [0, h_dist_vert - 1]:
+
+                    # print('BV', r*num_vert_stabilizers + vd*h_dist_vert + hd + num_detectors_face)
+                    matching.add_boundary_edge(r*num_vert_stabilizers + vd*h_dist_vert + hd + num_detectors_face)
+            
+            
+            # Adding measurement edges (currently no time boundry TODO)
+        if r < rounds - 1:
+            for s in range(num_face_stabilizers):
+                matching.add_edge(
+                    (num_face_stabilizers*r) + s,
+                    (num_face_stabilizers*(r+1)) + s,
+                    weight=weightm
+                )
+
+                matching.add_edge(
+                    (num_vert_stabilizers*r) + s + num_detectors_face,
+                    (num_vert_stabilizers*(r+1)) + s + num_detectors_face,
+                    weight=weightm
+                )
+
+    return matching
+
+
+
 
     # for r in range(rounds):
     #     for i in range(distance):
@@ -81,7 +150,6 @@ def build_toric_matching_graph(distance, rounds, px, py, pz, pm):
     #                 weight=weightm
     #             )
 
-    return matching
 
 
 # NOTE: This currently assumes all data qubits have the same noise model -> Shortest path = minimum weight

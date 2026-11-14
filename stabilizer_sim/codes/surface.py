@@ -3,7 +3,7 @@ import numpy as np
 import operators as o
 from codes.base_code import Code
 import decoding.utils as d
-import decoding.toric_decoding as to
+import decoding.surface_decoding as so
 
 import time
 
@@ -28,7 +28,7 @@ class SurfaceCode(Code):
             show_errors=False,
     ):
 
-        matching_graph = to.build_toric_matching_graph(self.dist, rounds, px, py, pz, pm)
+        matching_graph = so.build_toric_matching_graph(self.dist, rounds, px, py, pz, pm)
 
         # Checking which part of the process is slowing down the run
         self.times = {
@@ -52,6 +52,7 @@ class SurfaceCode(Code):
         for _ in range(shots):
             st = time.time()
             shot_res = self.run_round(rounds, px, py, pz, pm, matching_graph)
+            print(shot_res)
             result[shot_res[0][0]] += 1
             self.times['shot'].append(time.time() - st)
 
@@ -109,10 +110,6 @@ class SurfaceCode(Code):
             state_v = state_v * o1v * o2v * o3v
             state_h = state_h * o1h * o2h * o3h
 
-            # print('##', y_noise_v, z_noise_v, '###')
-            # print(o1v, o2v, o3v)
-
-            # print('ST', state_v)
             face_syndrome_t, vert_syndrome_t = self.syndromes(state_v.ex, state_v.ez, state_h.ex, state_h.ez)
             
             face_syndrome_t = face_syndrome_t.astype(int) ^ (face_meas_noise_full[rnd] < pm)
@@ -124,22 +121,23 @@ class SurfaceCode(Code):
 
         face_syndrome_t, vert_syndrome_t = self.syndromes(state_v.ex, state_v.ez, state_h.ex, state_h.ez)
 
+
         face_syndrome.append(face_syndrome_t.astype(int))
         vert_syndrome.append(vert_syndrome_t.astype(int))
 
         face_detections, vert_detections = d.detect_changes(face_syndrome), d.detect_changes(vert_syndrome)
+        # print(np.array([face_detections, vert_detections]))
 
-        t = time.time()
         try:
-            matches = d.match_errors(matching_graph, np.array([face_detections, vert_detections]))
+            matches = d.match_errors(matching_graph, [np.array(face_detections), np.array(vert_detections)])
         except Exception as e:
-            print('Face\n', face_detections, '\n\nVertex \n' ,vert_detections, '\n\n')
+            # print('Face\n', face_detections, '\n\nVertex \n' ,vert_detections, '\n\n')
             raise e
-        self.times['matching'].append(time.time() - t)
 
-        t = time.time()
-        predicted_errors = to.extract_toric_predicted_errors(matches, self.dist, rounds)
-        self.times['pred_error'].append(time.time() - t)
+        print(matches)
+
+        predicted_errors = so.extract_toric_predicted_errors(matches, self.dist, rounds)
+        
         
         if self.verbose:
             print('Z\n', face_detections, '\n\nX \n' ,  vert_detections, '\n\n')
@@ -151,7 +149,8 @@ class SurfaceCode(Code):
             for i in range(3):
                 print('  ',predicted_errors[1][2*i],'\n',  predicted_errors[1][2*i + 1])
 
-        t = time.time()
+        print(predicted_errors)
+
         # error = self.check_error(state.ex, state.ez, predicted_errors)
         # self.times['check_error'].append(time.time() - t)
 
@@ -162,30 +161,18 @@ class SurfaceCode(Code):
         
         syn_face = np.zeros([self.dist, self.dist+2])
         # Rough boundaries
-        syn_face[:, 0] = ezh[:-1, 0] ^ np.roll(ezh, -1, axis=0)[:-1, 0] ^ ezv [:, 0]
-        syn_face[:, -1] = ezh[:-1, -1] ^ np.roll(ezh, -1, axis=0)[:-1, -1] ^ ezv [:, -1]
+        syn_face[:, 0] = exh[:-1, 0] ^ np.roll(exh, -1, axis=0)[:-1, 0] ^ exv [:, 0]
+        syn_face[:, -1] = exh[:-1, -1] ^ np.roll(exh, -1, axis=0)[:-1, -1] ^ exv [:, -1]
         # Bulk
-        syn_face[:, 1:-1] = ezh[:-1, 1:-1] ^ np.roll(ezh, -1, axis=0)[:-1, 1:-1] ^ ezv[:, :-1] ^ np.roll(ezv, -1, axis=1)[:, :-1]
+        syn_face[:, 1:-1] = exh[:-1, 1:-1] ^ np.roll(exh, -1, axis=0)[:-1, 1:-1] ^ exv[:, :-1] ^ np.roll(exv, -1, axis=1)[:, :-1]
 
 
         syn_vert = np.zeros([self.dist+1, self.dist+1])
         # Smooth boundaries
-        syn_vert[0, :] = exh[0, :-1] ^ np.roll(exh, -1, axis=0)[0, :-1] ^ exv [0, :]
-        syn_vert[-1, :] = exh[-1, :-1] ^ np.roll(exh, -1, axis=0)[-1, :-1] ^ exv [-1, :]
+        syn_vert[0, :] = ezh[0, :-1] ^ np.roll(ezh, -1, axis=0)[0, :-1] ^ ezv [0, :]
+        syn_vert[-1, :] = ezh[-1, :-1] ^ np.roll(ezh, -1, axis=0)[-1, :-1] ^ ezv [-1, :]
         # Bulk
-        syn_vert[1:-1, :] = exh[1:-1, :-1] ^ np.roll(exh, -1, axis=0)[1:-1, :-1] ^ exv[:-1, :] ^ np.roll(exv, -1, axis=1)[:-1, :]
-
-
-        # print(syn_face, syn_vert)
-
-        # # Z-error array
-        # hz, vz = ez[0::2], ez[1::2]          
-        # syn_face = hz ^ vz ^ np.roll(vz, -1, axis=1) ^ np.roll(hz, -1, axis=0)
-
-        # # X-error array
-        # hx, vx = ex[0::2], ex[1::2]
-        # syn_vert = hx ^ np.roll(hx, 1, axis=1) ^ vx ^ np.roll(vx, 1, axis=0)
-        # return syn_face, syn_vert
+        syn_vert[1:-1, :] = ezh[1:-1, :-1] ^ np.roll(ezh, -1, axis=0)[1:-1, :-1] ^ ezv[:-1, :] ^ np.roll(ezv, -1, axis=1)[:-1, :]
 
         return syn_face, syn_vert
     
