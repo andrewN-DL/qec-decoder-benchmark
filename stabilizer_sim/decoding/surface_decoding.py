@@ -4,7 +4,7 @@ import numpy as np
 from pymatching import Matching
 
 
-def build_toric_matching_graph(distance, rounds, px, py, pz, pm):
+def build_matching_graph(distance, rounds, px, py, pz, pm):
     """
     For now assuming a square graph
     """
@@ -14,10 +14,9 @@ def build_toric_matching_graph(distance, rounds, px, py, pz, pm):
     rounds += 1
 
     # Face + Vertex
-    num_face_stabilizers = (distance * (distance + 2))
-    num_vert_stabilizers = (distance + 1)**2
+    num_face_stabilizers = distance * (distance - 1)
+    num_vert_stabilizers = (distance - 1) * distance
 
-    # d**2 spatial and temporal for all rounds. No temporal on last
     num_detectors_face = (rounds) * num_face_stabilizers
 
     if px == 0:
@@ -37,52 +36,48 @@ def build_toric_matching_graph(distance, rounds, px, py, pz, pm):
     # Face operator boundaries along smooth edges
     # Vertex operator boundaries along rough edges
 
-    h_dist_face = distance + 2
-    v_dist_face = distance
+    h_dist_face = distance
+    v_dist_face = distance - 1
 
-    h_dist_vert = distance + 1
-    v_dist_vert = distance + 1
-
-    print(rounds)
+    h_dist_vert = distance -1
+    v_dist_vert = distance
 
     for r in range(rounds):
         # Face operators
         for vd in range(v_dist_face):
             for hd in range(h_dist_face):
                 # Adding horizontal face edges
-                print(r, vd, hd)
+
                 if hd < h_dist_face - 1:
                     org = r*num_face_stabilizers + vd*h_dist_face + hd
                     dest = org + 1
-                    # print('A', org, dest)
+
                     matching.add_edge(org, dest, weight=weightx)
                 if vd < v_dist_face - 1:
                     org = r*num_face_stabilizers + vd*h_dist_face + hd
                     dest = org + h_dist_face
-                    # print('B', org, dest)
+
                     matching.add_edge(org, dest, weight=weightx)
                 if vd in [0, v_dist_face - 1]:
-                    # print('BF', r*num_face_stabilizers + vd*h_dist_face + hd)
-                    matching.add_boundary_edge(r*num_face_stabilizers + vd*h_dist_face + hd)
-        # print('Enter Vert')
+
+                    matching.add_boundary_edge(r*num_face_stabilizers + vd*h_dist_face + hd, weight=weightx)
+
         for vd in range(v_dist_vert):
             for hd in range(h_dist_vert):
-                print(r, vd, hd)
+
                 # Adding horizontal face edges
                 if hd < h_dist_vert - 1:
                     org = r*num_vert_stabilizers + vd*h_dist_vert + hd + num_detectors_face
                     dest = org + 1
-                    # print('C', org, dest)
-                    matching.add_edge(org, dest, weight=weightx)
+
+                    matching.add_edge(org, dest, weight=weightz)
                 if vd < v_dist_vert - 1:
                     org = r*num_vert_stabilizers + vd*h_dist_vert + hd + num_detectors_face
                     dest = org + h_dist_vert
-                    # print('D', org, dest)
-                    matching.add_edge(org, dest, weight=weightx)
-                if hd in [0, h_dist_vert - 1]:
 
-                    # print('BV', r*num_vert_stabilizers + vd*h_dist_vert + hd + num_detectors_face)
-                    matching.add_boundary_edge(r*num_vert_stabilizers + vd*h_dist_vert + hd + num_detectors_face)
+                    matching.add_edge(org, dest, weight=weightz)
+                if hd in [0, h_dist_vert - 1]:
+                    matching.add_boundary_edge(r*num_vert_stabilizers + vd*h_dist_vert + hd + num_detectors_face, weight=weightz)
             
             
             # Adding measurement edges (currently no time boundry TODO)
@@ -93,6 +88,7 @@ def build_toric_matching_graph(distance, rounds, px, py, pz, pm):
                     (num_face_stabilizers*(r+1)) + s,
                     weight=weightm
                 )
+            for s in range(num_vert_stabilizers):
 
                 matching.add_edge(
                     (num_vert_stabilizers*r) + s + num_detectors_face,
@@ -104,112 +100,67 @@ def build_toric_matching_graph(distance, rounds, px, py, pz, pm):
 
 
 
-
-    # for r in range(rounds):
-    #     for i in range(distance):
-    #         for j in range(distance):
-    #             # Horizontal connection (Z stabilizers)
-    #             org = (i*distance + j) + r*(num_z_stabilizers)
-    #             dest = (i*distance + j) + r*(num_z_stabilizers) + 1
-    #             if dest % distance == 0:
-    #                 dest -= distance
-    #             matching.add_edge(org, dest, weight=weightx)
-
-    #             # Vertical connection (Z stabilizers)
-    #             org = (i*distance + j) + r*(num_z_stabilizers)
-    #             dest = (i + 1)*distance + j + r*(num_z_stabilizers)
-    #             if dest % num_z_stabilizers < distance:
-    #                 dest -= num_z_stabilizers
-    #             matching.add_edge(org, dest, weight=weightx)
-
-    #             # Horizontal connection (X stabilizers)
-    #             org = (i*distance + j) + r*(num_z_stabilizers) + num_detectors_z
-    #             dest = (i*distance + j) + r*(num_z_stabilizers) + 1 + num_detectors_z
-    #             if dest % distance == 0:
-    #                 dest -= distance
-    #             matching.add_edge(org, dest, weight=weightz)
-
-    #             # Vertical connection (X stabilizers)
-    #             org = (i*distance + j) + r*(num_z_stabilizers) + num_detectors_z
-    #             dest = ((i + 1)*distance + j) + r*(num_z_stabilizers) + num_detectors_z
-    #             if dest % num_z_stabilizers < distance:
-    #                 dest -= num_z_stabilizers
-    #             matching.add_edge(org, dest, weight=weightz)
-
-    #     # Adding measurement edges (currently no time boundry TODO)
-    #     if r < rounds - 1:
-    #         for s in range(distance**2):
-    #             matching.add_edge(
-    #                 (num_z_stabilizers*r)+s,
-    #                 (num_z_stabilizers*(r+1))+s,
-    #                 weight=weightm)
-                
-    #             matching.add_edge(
-    #                 (num_z_stabilizers*r)+s+num_detectors_z,
-    #                 (num_z_stabilizers*(r+1))+s+num_detectors_z,
-    #                 weight=weightm
-    #             )
-
-
-
 # NOTE: This currently assumes all data qubits have the same noise model -> Shortest path = minimum weight
-def extract_toric_predicted_errors(matched_errors, distance, rounds):
+def extract_predicted_errors(matched_errors, distance, rounds):
     d = distance
-    n_stab = d * d
-    n_z_det = (rounds + 1) * n_stab
+    # Face + Vertex
+    num_face_stabilizers = d * (d - 1)
+    num_vert_stabilizers = (d - 1) * d
 
-    x_errors = np.zeros((2*d, d), dtype=np.uint8)
-    z_errors = np.zeros((2*d, d), dtype=np.uint8)
+    n_face_det = (rounds + 1) * num_face_stabilizers
 
-    def signed_step(a, b):
-        # shortest signed displacement a -> b on a cycle of length d
-        return ((b - a + d // 2) % d) - d // 2
+    x_errors_h = np.zeros((d, d), dtype=np.uint8)
+    x_errors_v = np.zeros((d-1, d-1), dtype=np.uint8)
+
+    z_errors_h = np.zeros((d, d), dtype=np.uint8)
+    z_errors_v = np.zeros((d-1, d-1), dtype=np.uint8)
 
     for u, v in matched_errors:
-
-        # Continue if match with temporal boundary
-        if u == -1 or v == -1:
-            continue
-
         u, v = int(u), int(v)
-        assert (u < n_z_det) == (v < n_z_det), 'X and Z errors matched'
 
-        is_x = u < n_z_det
-        if not is_x:
-            u -= n_z_det
-            v -= n_z_det
+        # Match to the spatial boundary
+        if u == -1 or v == -1:
+            det = max(u, v)
 
-        s1, s2 = u % n_stab, v % n_stab
-
-        # Continue if purely temporal
-        if s1 == s2:
+            if det < n_face_det:
+                # Face detector -> X errors, boundary on top/bottom
+                i, j = divmod(det % num_face_stabilizers, d)
+                if i + 1 <= d - 1 - i: 
+                    x_errors_h[:i+1, j] ^= 1
+                else:
+                    x_errors_h[i+1:, j] ^= 1
+            else:
+                # Vertex detector -> Z errors, boundary on left/right
+                i, j = divmod((det - n_face_det) % num_vert_stabilizers, d - 1)
+                if j + 1 <= d - 1 - j:
+                    z_errors_h[i, :j+1] ^= 1
+                else:
+                    z_errors_h[i, j+1:] ^= 1
             continue
 
-        i1, j1 = divmod(s1, d)
-        i2, j2 = divmod(s2, d)
+        assert (u < n_face_det) == (v < n_face_det), 'X and Z errors matched'
 
-        # vertical leg: column j1, from row i1 to row i2
-        dv = signed_step(i1, i2)
-        step = 1 if dv > 0 else -1
-        i = i1
-        for _ in range(abs(dv)):
-            k = i if step > 0 else (i - 1) % d
-            if is_x:
-                x_errors[2*k + 1, j1] ^= 1
-            else:
-                z_errors[2*((k + 1) % d), j1] ^= 1
-            i = (i + step) % d
+        if u < n_face_det:
+            # Face pair -> X errors
+            i1, j1 = divmod(u % num_face_stabilizers, d)
+            i2, j2 = divmod(v % num_face_stabilizers, d)
+            if i1 > i2:
+                (i1, j1), (i2, j2) = (i2, j2), (i1, j1)
 
-        # horizontal leg: row i2, from column j1 to column j2
-        dh = signed_step(j1, j2)
-        step = 1 if dh > 0 else -1
-        j = j1
-        for _ in range(abs(dh)):
-            k = j if step > 0 else (j - 1) % d
-            if is_x:
-                x_errors[2*i2, k] ^= 1
-            else:
-                z_errors[2*i2 + 1, (k + 1) % d] ^= 1
-            j = (j + step) % d
+            # Horizontal along row i1, then vertical down column j2
+            x_errors_v[i1, min(j1, j2):max(j1, j2)] ^= 1
+            x_errors_h[i1+1:i2+1, j2] ^= 1
 
-    return x_errors, z_errors
+        else:
+            # Vertex pair -> Z errors
+            i1, j1 = divmod((u - n_face_det) % num_vert_stabilizers, d - 1)
+            i2, j2 = divmod((v - n_face_det) % num_vert_stabilizers, d - 1)
+            if i1 > i2:
+                (i1, j1), (i2, j2) = (i2, j2), (i1, j1)
+
+            # Horizontal along row i1, then vertical down column j2
+            z_errors_h[i1, min(j1, j2)+1:max(j1, j2)+1] ^= 1
+            z_errors_v[i1:i2, j2] ^= 1
+
+
+    return x_errors_v, x_errors_h, z_errors_v, z_errors_h
