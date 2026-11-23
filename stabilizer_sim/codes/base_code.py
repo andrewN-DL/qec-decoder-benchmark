@@ -14,3 +14,5 @@ class Code:
                     bit += 1
 
         return bit % 2
+
+    

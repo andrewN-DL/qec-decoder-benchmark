@@ -99,8 +99,8 @@ def build_matching_graph(distance, rounds, px, py, pz, pm):
     return matching
 
 
-
 # NOTE: This currently assumes all data qubits have the same noise model -> Shortest path = minimum weight
+# NOTE: Also assumes all errors uncorrelated
 def extract_predicted_errors(matched_errors, distance, rounds):
     d = distance
     # Face + Vertex

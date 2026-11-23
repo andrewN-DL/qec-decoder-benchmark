@@ -21,32 +21,31 @@ class SurfaceCode(Code):
             self,
             shots,
             rounds,
-            px,
-            py,
-            pz,
-            pm,
+            true_noise,
+            assumed_noise,
             show_errors=False,
     ):
+        pxt, pyt, pzt, pmt = tuple(true_noise)
+        pxa, pya, pza, pma = tuple(assumed_noise)
 
-        matching_graph = so.build_matching_graph(self.dist, rounds, px, py, pz, pm)
+        matching_graph = so.build_matching_graph(self.dist, rounds, pxa, pya, pza, pma)
 
         # TODO: Implement or remove (Test)
-        result = {
-            'no_error': 0,
-            'logical': 0,
-            'outside': 0
-        }
+        result = 0
+        errors = [0, 0]
 
         for _ in range(shots):
-            shot_res = self.run_shot(rounds, px, py, pz, pm, matching_graph)
+            shot_res = self.run_shot(rounds, pxt, pyt, pzt, pmt, matching_graph)
 
-            result[shot_res[0][0]] += 1
+            result += shot_res[0][0]
+            errors[0] += shot_res[0][1][0]
+            errors[1] += shot_res[0][1][1]
 
         # Return last error/prediction
         if show_errors:
             return shot_res 
 
-        return {k: v/shots for k, v in result.items()}
+        return result/shots, [k/shots for k in errors]
 
     def run_shot(
         self,
@@ -65,38 +64,30 @@ class SurfaceCode(Code):
         vert_syndrome = []
 
         # Generating noise
-        noise_full_v = self.rng.random((rounds, self.dist-1, self.dist-1))
-        noise_full_h = self.rng.random((rounds, self.dist, self.dist))
-
-        face_meas_noise_full = self.rng.random((rounds, self.dist-1, self.dist))
-        vert_meas_noise_full = self.rng.random((rounds, self.dist, self.dist-1))
+        noise_full_v, noise_full_h, face_meas_noise_full, vert_meas_noise_full = self.generate_noise(rounds)
 
         op_dim_v, op_dim_h = [self.dist - 1, self.dist - 1], [self.dist, self.dist]
         for rnd in range(rounds):
 
-            # Apply for X or Y
-            x_noise_v = np.argwhere(noise_full_v[rnd] < px + py)
-            x_noise_h = np.argwhere(noise_full_h[rnd] < px + py)
-
-            # Apply for Y or Z
-            z_noise_v = np.argwhere((noise_full_v[rnd] < px + py + pz) & (noise_full_v[rnd] >= px))
-            z_noise_h = np.argwhere((noise_full_h[rnd] < px + py + pz) & (noise_full_h[rnd] >= px))
-
-            oXv, oZv = o.X(op_dim_v, x_noise_v), o.Z(op_dim_v, z_noise_v)
-            oXh, oZh= o.X(op_dim_h, x_noise_h), o.Z(op_dim_h, z_noise_h)
-            
-            state_v = state_v * oXv * oZv
-            state_h = state_h * oXh * oZh
-
-            face_syndrome_t, vert_syndrome_t = self.get_syndromes(state_v.ex, state_v.ez, state_h.ex, state_h.ez)
-            
-            face_syndrome_t = face_syndrome_t.astype(int) ^ (face_meas_noise_full[rnd] < pm)
-            vert_syndrome_t = vert_syndrome_t.astype(int) ^ (vert_meas_noise_full[rnd] < pm)
+            face_syndrome_t, vert_syndrome_t, state_v, state_h = self.run_round(
+                                                    state_v,
+                                                    state_h,
+                                                    op_dim_v,
+                                                    op_dim_h,
+                                                    noise_full_v[rnd],
+                                                    noise_full_h[rnd],
+                                                    face_meas_noise_full[rnd],
+                                                    vert_meas_noise_full[rnd],
+                                                    px,
+                                                    py,
+                                                    pz,
+                                                    pm,
+                                                )
 
             face_syndrome.append(face_syndrome_t)
             vert_syndrome.append(vert_syndrome_t)
 
-
+        # Final round without measurement errors
         face_syndrome_t, vert_syndrome_t = self.get_syndromes(state_v.ex, state_v.ez, state_h.ex, state_h.ez)
 
         face_syndrome.append(face_syndrome_t.astype(int))
@@ -104,6 +95,7 @@ class SurfaceCode(Code):
 
         face_detections, vert_detections = d.detect_changes(face_syndrome), d.detect_changes(vert_syndrome)
 
+        # Dubugging matching
         try:
             matches = d.match_errors(matching_graph, [np.array(face_detections), np.array(vert_detections)])
         except Exception as e:
@@ -111,10 +103,55 @@ class SurfaceCode(Code):
             raise e
 
         predicted_errors = so.extract_predicted_errors(matches, self.dist, rounds)
-
         error = self.check_error(state_v.ex, state_v.ez, state_h.ex, state_h.ez, predicted_errors)
 
         return error, state_v, state_h, predicted_errors
+
+    def run_round(
+            self,
+            state_v,
+            state_h,
+            op_dim_v,
+            op_dim_h,
+            noise_v,
+            noise_h,
+            face_meas_noise,
+            vert_meas_noise,
+            px,
+            py,
+            pz,
+            pm,
+        ):
+         # Apply for X or Y
+        x_noise_v = np.argwhere(noise_v < px + py)
+        x_noise_h = np.argwhere(noise_h < px + py)
+
+        # Apply for Y or Z
+        z_noise_v = np.argwhere((noise_v < px + py + pz) & (noise_v >= px))
+        z_noise_h = np.argwhere((noise_h < px + py + pz) & (noise_h >= px))
+
+        oXv, oZv = o.X(op_dim_v, x_noise_v), o.Z(op_dim_v, z_noise_v)
+        oXh, oZh= o.X(op_dim_h, x_noise_h), o.Z(op_dim_h, z_noise_h)
+        
+        state_v = state_v * oXv * oZv
+        state_h = state_h * oXh * oZh
+
+        face_syndrome_t, vert_syndrome_t = self.get_syndromes(state_v.ex, state_v.ez, state_h.ex, state_h.ez)
+
+        face_syndrome_t = face_syndrome_t.astype(int) ^ (face_meas_noise < pm)
+        vert_syndrome_t = vert_syndrome_t.astype(int) ^ (vert_meas_noise < pm)
+
+        return face_syndrome_t, vert_syndrome_t, state_v, state_h
+
+    def generate_noise(self, rounds):
+        noise_full_v = self.rng.random((rounds, self.dist-1, self.dist-1))
+        noise_full_h = self.rng.random((rounds, self.dist, self.dist))
+
+        face_meas_noise_full = self.rng.random((rounds, self.dist-1, self.dist))
+        vert_meas_noise_full = self.rng.random((rounds, self.dist, self.dist-1))
+
+        return noise_full_v, noise_full_h, face_meas_noise_full, vert_meas_noise_full
+
 
     def get_syndromes(self, exv, ezv, exh, ezh):
         syn_face = exh[:-1] ^ exh[1:]
@@ -166,7 +203,4 @@ class SurfaceCode(Code):
             errors[1] = 1 
             is_error = 1
 
-        if is_error:
-            return 'logical', errors
-
-        return 'no_error', errors
+        return is_error, errors
